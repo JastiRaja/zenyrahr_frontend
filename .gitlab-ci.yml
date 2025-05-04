@@ -1,0 +1,54 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  SSH_USER: "ubuntu"
+  DEST_PATH: "/home/ubuntu/hrms-front-end"
+  ARTIFACT_NAME: "dist.tar.gz"
+
+before_script:
+  # Install SSH client if missing
+  - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+  - eval $(ssh-agent -s)
+  - mkdir -p ~/.ssh
+  - chmod 700 ~/.ssh
+  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+  - chmod 600 ~/.ssh/id_rsa
+  - ssh-add ~/.ssh/id_rsa
+  - ssh-keyscan -H $EC2_PUBLIC_IP >> ~/.ssh/known_hosts
+  - chmod 644 ~/.ssh/known_hosts
+
+build:
+  stage: build
+  image: node:18
+  script:
+    - npm ci  # Faster than npm install
+    - npm run build
+    - tar -czvf $ARTIFACT_NAME dist/
+  artifacts:
+    paths:
+      - $ARTIFACT_NAME
+    expire_in: 1 hour  # Auto-clean artifacts
+
+deploy:
+  stage: deploy
+  script:
+    - echo "Uploading build to EC2..."
+    - scp -i ~/.ssh/id_rsa $ARTIFACT_NAME $SSH_USER@$EC2_PUBLIC_IP:$DEST_PATH/
+    
+    - echo "Deploying application on EC2..."
+    - |
+      ssh -i ~/.ssh/id_rsa $SSH_USER@$EC2_PUBLIC_IP << 'EOF'
+      set -e  # Fail fast if any command fails
+      cd /home/ubuntu/hrms-front-end
+      sudo chown -R ubuntu:ubuntu dist  # Change ownership of the directory
+      sudo chmod -R 777 dist  # Ensure write access
+      rm -rf dist
+      tar -xzvf dist.tar.gz
+      sudo systemctl restart nginx
+      echo " Deployment successful"
+      EOF
+  only:
+    - main
+
