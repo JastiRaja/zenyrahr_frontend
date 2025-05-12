@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (user) {
       localStorage.setItem("user", JSON.stringify(user));
-      console.log("user details",user);
+      // console.log("user details",user);
     }
   }, [user]);
 
@@ -50,8 +50,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     username: string,
     password: string
   ): Promise<LoginResponse> => {
-    console.log("API_BASE_URL:", API_BASE_URL);
-    console.log(import.meta.env);
+    // console.log("API_BASE_URL:", API_BASE_URL);
+    // console.log(import.meta.env);
 
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",

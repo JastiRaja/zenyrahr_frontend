@@ -75,8 +75,8 @@ export default function ResetPassword() {
 
     setError("");
     setIsLoading(true);
-    console.log("Username:", username);
-    console.log("New Password:", formValues.newPassword);
+    // console.log("Username:", username);
+    // console.log("New Password:", formValues.newPassword);
     try {
       const response = await fetch(
         `${API_BASE_URL}/auth/resetPassword`,
@@ -92,11 +92,11 @@ export default function ResetPassword() {
       const responseData = await response.json(); // Parse the response JSON
 
       if (!response.ok) {
-        console.log("Error response:", responseData); // Log the error response from the backend
+        // console.log("Error response:", responseData); // Log the error response from the backend
         throw new Error("Password reset failed");
       }
 
-      console.log("Success response:", responseData); // Log the success response from the backend
+      // console.log("Success response:", responseData); // Log the success response from the backend
       navigate("/login", {
         state: {
           message:

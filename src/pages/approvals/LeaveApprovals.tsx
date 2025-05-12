@@ -69,17 +69,17 @@ export default function LeaveApprovals() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        console.log("Fetching all leave requests for approvals");
+        // console.log("Fetching all leave requests for approvals");
         const [leaveRequestsResponse, leaveBalancesResponse] =
           await Promise.all([
             axios.get(`${API_BASE_URL}/api/leave-requests`),
             axios.get(`${API_BASE_URL}/api/leave-balances`),
           ]);
 
-        console.log(
-          "Received leave requests for approval:",
-          leaveRequestsResponse.data
-        );
+        // console.log(
+        //   "Received leave requests for approval:",
+        //   leaveRequestsResponse.data
+        // );
 
         const processedRequests = leaveRequestsResponse.data.map(
           (request: LeaveRequest) => ({
@@ -89,10 +89,10 @@ export default function LeaveApprovals() {
           })
         );
 
-        console.log(
-          "Processed leave requests for approval:",
-          processedRequests
-        );
+        // console.log(
+        //   "Processed leave requests for approval:",
+        //   processedRequests
+        // );
 
         // Sort by createdAt in descending order (most recent first)
         const sortedRequests = processedRequests.sort(

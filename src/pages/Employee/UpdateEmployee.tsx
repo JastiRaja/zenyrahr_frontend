@@ -87,7 +87,7 @@
 
 //   const user = JSON.parse(localStorage.getItem('user') || '{}');
 //   const userId = user?.id;
-//   console.log(userId);
+//   // console.log(userId);
   
 
 //   useEffect(() => {
@@ -189,7 +189,7 @@
 //     const updatedEducation = formData.education.map((edu) =>
 //       edu.id === id ? { ...edu, [field]: value } : edu
 //     );
-//     console.log('Updated Education:', updatedEducation); // Debugging
+//     // console.log('Updated Education:', updatedEducation); // Debugging
 //     updateFormData('education', updatedEducation);
 //   }}
 //   onAdd={() => {
@@ -208,12 +208,12 @@
 //       year: '',
 //       field: '',
 //     };
-//     console.log('Adding:', newEducation); // Debugging
+//     // console.log('Adding:', newEducation); // Debugging
 //     updateFormData('education', [...formData.education, newEducation]);
 //   }}
 //   onRemove={(id) => {
 //     const updatedEducation = formData.education.filter((edu) => edu.id !== id);
-//     console.log('Removing:', id); // Debugging
+//     // console.log('Removing:', id); // Debugging
 //     updateFormData('education', updatedEducation);
 //   }}
 // />
@@ -228,7 +228,7 @@
 //     const updatedExperience = formData.experience.map((exp) =>
 //       exp.id === id ? { ...exp, [field]: value } : exp
 //     );
-//     console.log('Updated Experience:', updatedExperience); // Debugging
+//     // console.log('Updated Experience:', updatedExperience); // Debugging
 //     updateFormData('experience', updatedExperience);
 //   }}
 //   onAdd={() => {
@@ -244,12 +244,12 @@
 //       endDate: '',
 //       description: ''
 //     };
-//     console.log('Adding:', newExperience); // Debugging
+//     // console.log('Adding:', newExperience); // Debugging
 //     updateFormData('experience', [...formData.experience, newExperience]);
 //   }}
 //   onRemove={(id) => {
 //     const updatedExperience = formData.experience.filter((exp) => exp.id !== id);
-//     console.log('Removing:', id); // Debugging
+//     // console.log('Removing:', id); // Debugging
 //     updateFormData('experience', updatedExperience);
 //   }}
 // />
@@ -282,7 +282,7 @@
 //             const updatedFamilyDetails = formData.familyDetails.map((member) =>
 //               member.id === id ? { ...member, [field]: value } : member
 //             );
-//             console.log('Updated Family Details:', updatedFamilyDetails); // Debugging
+//             // console.log('Updated Family Details:', updatedFamilyDetails); // Debugging
 //             updateFormData('familyDetails', updatedFamilyDetails);
 //           }}
 //           onAdd={() => {
@@ -296,12 +296,12 @@
 //               relationship: '',
 //               contact: ''
 //             };
-//             console.log('Adding Family Member:', newFamilyMember); // Debugging
+//             // console.log('Adding Family Member:', newFamilyMember); // Debugging
 //             updateFormData('familyDetails', [...formData.familyDetails, newFamilyMember]);
 //           }}
 //           onRemove={(id) => {
 //             const updatedFamilyDetails = formData.familyDetails.filter((member) => member.id !== id);
-//             console.log('Removing Family Member:', id); // Debugging
+//             // console.log('Removing Family Member:', id); // Debugging
 //             updateFormData('familyDetails', updatedFamilyDetails);
 //           }}
 //         />
@@ -315,7 +315,7 @@
 //     const updatedMedicalRecords = formData.medicalRecords.map((record) =>
 //       record.id === id ? { ...record, [field]: value } : record
 //     );
-//     console.log('Updated Medical Records:', updatedMedicalRecords); // Debugging
+//     // console.log('Updated Medical Records:', updatedMedicalRecords); // Debugging
 //     updateFormData('medicalRecords', updatedMedicalRecords);
 //   }}
 //   onAdd={() => {
@@ -329,12 +329,12 @@
 //       date: '',
 //       details: '',
 //     };
-//     console.log('Adding Medical Record:', newMedicalRecord); // Debugging
+//     // console.log('Adding Medical Record:', newMedicalRecord); // Debugging
 //     updateFormData('medicalRecords', [...formData.medicalRecords, newMedicalRecord]);
 //   }}
 //   onRemove={(id) => {
 //     const updatedMedicalRecords = formData.medicalRecords.filter((record) => record.id !== id);
-//     console.log('Removing Medical Record:', id); // Debugging
+//     // console.log('Removing Medical Record:', id); // Debugging
 //     updateFormData('medicalRecords', updatedMedicalRecords);
 //   }}
 // />

@@ -35,7 +35,7 @@ export default function AdminServiceRequestList() {
           },
         });
 
-        console.log("Service Requests:", response.data); // Debugging line
+        // console.log("Service Requests:", response.data); // Debugging line
         setServiceRequests(response.data);
       } catch (error) {
         console.error("Error fetching service requests:", error);

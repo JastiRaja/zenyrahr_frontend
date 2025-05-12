@@ -29,15 +29,15 @@ export default function SelfService() {
 
   useEffect(() => {
     const fetchPersonalInfo = async (employeeId: string) => {
-      console.log("Fetching for ID:", employeeId);
+      // // console.log("Fetching for ID:", employeeId);
       try {
         const response = await fetch(
           `${API_BASE_URL}/auth/employees/${employeeId}`
         );
         const text = await response.text();
-        console.log("Raw Response:", text);
+        // // console.log("Raw Response:", text);
         const data = JSON.parse(text);
-        console.log("Parsed Data:", data);
+        // // console.log("Parsed Data:", data);
         setPersonalInfo({
           name: `${data.firstName} ${data.lastName}`,
           email: data.username,

@@ -69,7 +69,7 @@ export default function RequestLeave() {
 
     // ✅ Debugging: Log FormData before sending
     for (let [key, value] of formDataPayload.entries()) {
-      console.log(`${key}:`, value);
+      // console.log(`${key}:`, value);
     }
 
     try {
@@ -82,7 +82,7 @@ export default function RequestLeave() {
         }
       );
 
-      console.log("✅ Leave request submitted:", response.data);
+      // console.log("✅ Leave request submitted:", response.data);
       setMessage("Leave request submitted successfully.");
       navigate("/leave"); // Redirect on success
     } catch (error) {

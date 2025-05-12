@@ -195,7 +195,7 @@ export default function Dashboard() {
         axios.get(`${API_BASE_URL}/api/leave-requests`),
       ]);
 
-      console.log("Employees response:", employeesResponse.data);
+      // console.log("Employees response:", employeesResponse.data);
 
       // Calculate total employees and growth
       const currentEmployees = Array.isArray(employeesResponse.data)
@@ -279,7 +279,7 @@ export default function Dashboard() {
         axios.get(`${API_BASE_URL}/auth/employees`),
         axios.get(`${API_BASE_URL}/api/leave-requests`),
         axios.get(`${API_BASE_URL}/api/timesheets`),
-        axios.get(`${API_BASE_URL}/api/job-postings`),
+        axios.get(`${API_BASE_URL}/recruitment-details`),
       ]);
 
       const activities: Activity[] = [];

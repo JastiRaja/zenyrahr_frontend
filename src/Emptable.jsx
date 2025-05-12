@@ -78,7 +78,7 @@ export default function Emptable() {
 
   const handleSave = () => {
     if (selectedRow) {
-      console.log('Selected Row to Save:', selectedRow); // Debugging
+      // console.log('Selected Row to Save:', selectedRow); // Debugging
 
       // Prepare the updated row object
       const updatedRow = { ...selectedRow };
@@ -86,7 +86,7 @@ export default function Emptable() {
       axios
         .put(`${API_BASE_URL}/employeeinfo/${selectedRow.id}`, updatedRow)
         .then((response) => {
-          console.log('Update Response:', response); // Debugging
+          // console.log('Update Response:', response); // Debugging
 
           // Update the state to reflect changes
           setRows((prevRows) =>

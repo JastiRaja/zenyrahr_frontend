@@ -67,7 +67,7 @@ export default function JobDetails() {
 
   useEffect(() => {
     if (user) {
-      console.log('Current user data:', user);
+      // console.log('Current user data:', user);
       setReferralForm(prev => ({
         ...prev,
         referredEmployeeId: user.id ? parseInt(user.id) : 0,
@@ -113,7 +113,7 @@ export default function JobDetails() {
         }
       };
 
-      console.log('Sending referral payload:', referralPayload);
+      // console.log('Sending referral payload:', referralPayload);
 
       const response = await axios.post(`${API_BASE_URL}/api/referrals`, referralPayload);
       

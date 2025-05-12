@@ -43,7 +43,7 @@ export default function PersonalInfoForm({
               return response.json();
             })
             .then((data) => {
-              console.log("Fetched data:", data); // Log the data to check its structure
+              // console.log("Fetched data:", data); // Log the data to check its structure
               setPersonalInfo({
                 firstName: data.firstName,
                 lastName: data.lastName,

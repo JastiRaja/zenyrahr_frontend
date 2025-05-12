@@ -107,7 +107,7 @@ export default function SubmitTimesheet() {
         status: entry.status,
       }));
 
-      console.log("Submitting payload:", JSON.stringify(payload, null, 2));
+      // console.log("Submitting payload:", JSON.stringify(payload, null, 2));
 
       if (editingEntry?.id) {
         await axios.put(
