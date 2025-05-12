@@ -111,12 +111,12 @@ export default function SubmitTimesheet() {
 
       if (editingEntry?.id) {
         await axios.put(
-          `${API_BASE_URL}/timesheet/${editingEntry.id}`,
+          `${API_BASE_URL}/api/timesheet/${editingEntry.id}`,
           payload[0]
         );
       } else {
         for (const timesheet of payload) {
-          await axios.post(`${API_BASE_URL}/timesheet`, timesheet);
+          await axios.post(`${API_BASE_URL}/api/timesheet`, timesheet);
         }
       }
 
@@ -139,7 +139,7 @@ export default function SubmitTimesheet() {
       </h1>
       <form onSubmit={handleSubmit}>
         {entries.map((entry, index) => (
-          <div key={entry.code} className="flex flex-col gap-4 border-b border-gray-200 pb-4">
+          <div key={entry.code || index} className="flex flex-col gap-4 border-b border-gray-200 pb-4">
             <div className="grid grid-cols-2 gap-4">
               {/* ✅ Date Input */}
               <div>

@@ -10,56 +10,66 @@
 // import MedicalRecordsForm from '../Employee/MedicalRecordsForm';
 // import employeeService from './employee.service';
 
+// type TabId = 'personal' | 'education' | 'experience' | 'skills' | 'family' | 'medical';
+
+// interface PersonalInfo {
+//   firstName: string;
+//   lastName: string;
+//   email: string;
+//   phone: string;
+//   address: string;
+// }
+
+// interface Education {
+//   id: number;
+//   degree: string;
+//   institution: string;
+//   year: string;
+//   field: string;
+// }
+
+// interface Experience {
+//   id: number;
+//   company: string;
+//   position: string;
+//   startDate: string;
+//   endDate: string;
+//   description: string;
+// }
+
+// interface FamilyDetail {
+//   id: number;
+//   name: string;
+//   relationship: string;
+//   contact: string;
+// }
+
+// interface MedicalRecord {
+//   id: number;
+//   condition: string;
+//   date: string;
+//   details: string;
+// }
+
+// interface FormState {
+//   personal: PersonalInfo;
+//   photo: File | null;
+//   education: Education[];
+//   experience: Experience[];
+//   skills: string[];
+//   interests: string[];
+//   familyDetails: FamilyDetail[];
+//   medicalRecords: MedicalRecord[];
+// }
+
 // const TABS = [
 //   { id: 'personal', name: 'Personal Info', icon: User },
-//   { id: 'education', name: 'EducationForm', icon: GraduationCap },
+//   { id: 'education', name: 'Education', icon: GraduationCap },
 //   { id: 'experience', name: 'Experience', icon: Briefcase },
 //   { id: 'skills', name: 'Skills & Interests', icon: Star },
 //   { id: 'family', name: 'Family Details', icon: Users },
 //   { id: 'medical', name: 'Medical Records', icon: Heart },
 // ] as const;
-
-// type TabId = typeof TABS[number]['id'];
-
-// interface FormState {
-//   personal: {
-//     firstName: string;
-//     lastName: string;
-//     email: string;
-//     phone: string;
-//     address: string;
-//   };
-//   photo: File | null;
-//   education: Array<{
-//     id: number;
-//     degree: string;
-//     institution: string;
-//     year: string;
-//     field: string;
-//   }>;
-//   experience: Array<{
-//     id: number;
-//     company: string;
-//     position: string;
-//     startDate: string;
-//     endDate: string;
-//     description: string;
-//   }>;
-//   skills: string[];
-//   interests: string[];
-//   familyDetails: Array<{
-//     id: number;
-//     name: string;
-//     relationship: string;
-//     contact: string;
-//   }>;
-//   medicalRecords: Array<{
-//     id: number;
-//     condition: string;
-//     date: string;
-//     details: string;
-//   }>;
-// }
 
 // const initialFormState: FormState = {
 //   personal: {
@@ -78,17 +88,28 @@
 //   medicalRecords: [{ id: 1, condition: '', date: '', details: '' }],
 // };
 
-// export default function UpdateEmployee() {
+// // Utility function to strip id from new items
+// function stripIdFromNewItems<T extends { id?: any }>(array: T[]): Omit<T, 'id'>[] | T[] {
+//   return array.map(item => {
+//     if (!item.id) {
+//       // Remove id property for new items
+//       const { id, ...rest } = item;
+//       return rest as Omit<T, 'id'>;
+//     }
+//     return item;
+//   });
+// }
+
+// const UpdateEmployee: React.FC = () => {
 //   const navigate = useNavigate();
 //   const [activeTab, setActiveTab] = useState<TabId>('personal');
 //   const [loading, setLoading] = useState(false);
+//   const [successMessage, setSuccessMessage] = useState('');
 //   const [error, setError] = useState('');
 //   const [formData, setFormData] = useState<FormState>(initialFormState);
 
-//   const user = JSON.parse(localStorage.getItem('user') || '{}');
+//   const user = JSON.parse(localStorage.getItem('user') || '{}') as { id?: string };
 //   const userId = user?.id;
-//   // console.log(userId);
-  
 
 //   useEffect(() => {
 //     const fetchEmployeeData = async () => {
@@ -119,22 +140,43 @@
 //     e.preventDefault();
 //     setLoading(true);
 //     setError('');
+//     setSuccessMessage('');
 
 //     try {
-//       const employeeData = {
-//         ...formData.personal,
-//         photo: formData.photo,
-//         education: formData.education,
-//         experience: formData.experience,
-//         skills: formData.skills,
-//         interests: formData.interests,
-//         familyDetails: formData.familyDetails,
-//         medicalRecords: formData.medicalRecords,
-//       };
+//       // Prepare data, stripping id from new items
+//       const education = stripIdFromNewItems(formData.education);
+//       const experience = stripIdFromNewItems(formData.experience);
+//       const familyDetails = stripIdFromNewItems(formData.familyDetails);
+//       const medicalRecords = stripIdFromNewItems(formData.medicalRecords);
+
+//       let employeeData: FormData | Record<string, any>;
+//       if (formData.photo) {
+//         employeeData = new FormData();
+//         Object.entries(formData.personal).forEach(([key, value]) => {
+//           employeeData.append(key, value);
+//         });
+//         employeeData.append('photo', formData.photo);
+//         employeeData.append('education', JSON.stringify(education));
+//         employeeData.append('experience', JSON.stringify(experience));
+//         employeeData.append('skills', JSON.stringify(formData.skills));
+//         employeeData.append('interests', JSON.stringify(formData.interests));
+//         employeeData.append('familyDetails', JSON.stringify(familyDetails));
+//         employeeData.append('medicalRecords', JSON.stringify(medicalRecords));
+//       } else {
+//         employeeData = {
+//           ...formData.personal,
+//           education,
+//           experience,
+//           skills: formData.skills,
+//           interests: formData.interests,
+//           familyDetails,
+//           medicalRecords,
+//         };
+//       }
 
 //       if (userId) {
 //         await employeeService.updateEmployee(userId, employeeData);
-
+//         setSuccessMessage('Employee information updated successfully!');
 //       } else {
 //         setError('User ID not found');
 //       }
@@ -149,7 +191,7 @@
 //     section: K,
 //     data: FormState[K]
 //   ) => {
-//     setFormData(prev => ({
+//     setFormData((prev) => ({
 //       ...prev,
 //       [section]: data,
 //     }));
@@ -160,7 +202,7 @@
 //       case 'personal':
 //         return (
 //           <>
-//             <div className='mb-4'>
+//             <div className="mb-4">
 //               <PhotoUpload
 //                 onChange={(e) => {
 //                   if (e.target.files?.[0]) {
@@ -184,161 +226,127 @@
 //       case 'education':
 //         return (
 //           <EducationForm
-//   education={formData.education} // Correct binding
-//   onChange={(id, field, value) => {
-//     const updatedEducation = formData.education.map((edu) =>
-//       edu.id === id ? { ...edu, [field]: value } : edu
-//     );
-//     // console.log('Updated Education:', updatedEducation); // Debugging
-//     updateFormData('education', updatedEducation);
-//   }}
-//   onAdd={() => {
-//     // const newId =
-//     //   formData.education.length > 0
-//     //     ? Math.max(...formData.education.map((edu) => edu.id)) + 1
-//     //     : 1;
-//     const newId =
-//       formData.education.length > 0
-//         ? Math.max(...formData.education.map((edu) => edu.id)) + 1
-//         : 1;
-//     const newEducation = {
-//       id: newId,
-//       degree: '',
-//       institution: '',
-//       year: '',
-//       field: '',
-//     };
-//     // console.log('Adding:', newEducation); // Debugging
-//     updateFormData('education', [...formData.education, newEducation]);
-//   }}
-//   onRemove={(id) => {
-//     const updatedEducation = formData.education.filter((edu) => edu.id !== id);
-//     // console.log('Removing:', id); // Debugging
-//     updateFormData('education', updatedEducation);
-//   }}
-// />
-
-
+//             education={formData.education}
+//             onChange={(id, field, value) => {
+//               const updatedEducation = formData.education.map((edu) =>
+//                 edu.id === id ? { ...edu, [field]: value } : edu
+//               );
+//               updateFormData('education', updatedEducation);
+//             }}
+//             onAdd={() => {
+//               const newId =
+//                 formData.education.length > 0
+//                   ? Math.max(...formData.education.map((edu) => edu.id)) + 1
+//                   : 1;
+//               updateFormData('education', [
+//                 ...formData.education,
+//                 { id: newId, degree: '', institution: '', year: '', field: '' },
+//               ]);
+//             }}
+//             onRemove={(id) => {
+//               const updatedEducation = formData.education.filter((edu) => edu.id !== id);
+//               updateFormData('education', updatedEducation);
+//             }}
+//           />
 //         );
 //       case 'experience':
 //         return (
-// <ExperienceForm
-//   experience={formData.experience} // Correct binding
-//   onChange={(id, field, value) => {
-//     const updatedExperience = formData.experience.map((exp) =>
-//       exp.id === id ? { ...exp, [field]: value } : exp
-//     );
-//     // console.log('Updated Experience:', updatedExperience); // Debugging
-//     updateFormData('experience', updatedExperience);
-//   }}
-//   onAdd={() => {
-//     // const any =
-//     //   formData.experience.length > 0
-//     //     ? Math.max(...formData.experience.map((exp) => exp.id)) + 1
-//     //     : 1;
-//     const newExperience = {
-      
-//       company: '',
-//       position: '',
-//       startDate: '',
-//       endDate: '',
-//       description: ''
-//     };
-//     // console.log('Adding:', newExperience); // Debugging
-//     updateFormData('experience', [...formData.experience, newExperience]);
-//   }}
-//   onRemove={(id) => {
-//     const updatedExperience = formData.experience.filter((exp) => exp.id !== id);
-//     // console.log('Removing:', id); // Debugging
-//     updateFormData('experience', updatedExperience);
-//   }}
-// />
-
+//           <ExperienceForm
+//             experience={formData.experience}
+//             onChange={(id, field, value) => {
+//               const updatedExperience = formData.experience.map((exp) =>
+//                 exp.id === id ? { ...exp, [field]: value } : exp
+//               );
+//               updateFormData('experience', updatedExperience);
+//             }}
+//             onAdd={() => {
+//               const newId =
+//                 formData.experience.length > 0
+//                   ? Math.max(...formData.experience.map((exp) => exp.id)) + 1
+//                   : 1;
+//               updateFormData('experience', [
+//                 ...formData.experience,
+//                 { id: newId, company: '', position: '', startDate: '', endDate: '', description: '' },
+//               ]);
+//             }}
+//             onRemove={(id) => {
+//               const updatedExperience = formData.experience.filter((exp) => exp.id !== id);
+//               updateFormData('experience', updatedExperience);
+//             }}
+//           />
 //         );
 //       case 'skills':
 //         return (
 //           <SkillsInterestsForm
 //             skills={formData.skills}
 //             interests={formData.interests}
-//             onAddSkill={(skill) => {
-//               updateFormData('skills', [...formData.skills, skill]);
-//             }}
-//             onRemoveSkill={(index) => {
-//               updateFormData('skills', formData.skills.filter((_, i) => i !== index));
-//             }}
-//             onAddInterest={(interest) => {
-//               updateFormData('interests', [...formData.interests, interest]);
-//             }}
-//             onRemoveInterest={(index) => {
-//               updateFormData('interests', formData.interests.filter((_, i) => i !== index));
-//             }}
+//             onAddSkill={(skill) => updateFormData('skills', [...formData.skills, skill])}
+//             onRemoveSkill={(index) =>
+//               updateFormData('skills', formData.skills.filter((_, i) => i !== index))
+//             }
+//             onAddInterest={(interest) =>
+//               updateFormData('interests', [...formData.interests, interest])
+//             }
+//             onRemoveInterest={(index) =>
+//               updateFormData('interests', formData.interests.filter((_, i) => i !== index))
+//             }
 //           />
 //         );
 //       case 'family':
 //         return (
 //           <FamilyDetailsForm
-//           familyDetails={formData.familyDetails} // Correct binding
-//           onChange={(id, field, value) => {
-//             const updatedFamilyDetails = formData.familyDetails.map((member) =>
-//               member.id === id ? { ...member, [field]: value } : member
-//             );
-//             // console.log('Updated Family Details:', updatedFamilyDetails); // Debugging
-//             updateFormData('familyDetails', updatedFamilyDetails);
-//           }}
-//           onAdd={() => {
-//             // const newId =
-//             //   formData.familyDetails.length > 0
-//             //     ? Math.max(...formData.familyDetails.map((member) => member.id)) + 1
-//             //     : 1;
-//             const newFamilyMember = {
-//               // id: newId,
-//               name: '',
-//               relationship: '',
-//               contact: ''
-//             };
-//             // console.log('Adding Family Member:', newFamilyMember); // Debugging
-//             updateFormData('familyDetails', [...formData.familyDetails, newFamilyMember]);
-//           }}
-//           onRemove={(id) => {
-//             const updatedFamilyDetails = formData.familyDetails.filter((member) => member.id !== id);
-//             // console.log('Removing Family Member:', id); // Debugging
-//             updateFormData('familyDetails', updatedFamilyDetails);
-//           }}
-//         />
-        
+//             familyDetails={formData.familyDetails}
+//             onChange={(id, field, value) => {
+//               const updatedFamilyDetails = formData.familyDetails.map((member) =>
+//                 member.id === id ? { ...member, [field]: value } : member
+//               );
+//               updateFormData('familyDetails', updatedFamilyDetails);
+//             }}
+//             onAdd={() => {
+//               const newId =
+//                 formData.familyDetails.length > 0
+//                   ? Math.max(...formData.familyDetails.map((member) => member.id)) + 1
+//                   : 1;
+//               updateFormData('familyDetails', [
+//                 ...formData.familyDetails,
+//                 { id: newId, name: '', relationship: '', contact: '' },
+//               ]);
+//             }}
+//             onRemove={(id) => {
+//               const updatedFamilyDetails = formData.familyDetails.filter(
+//                 (member) => member.id !== id
+//               );
+//               updateFormData('familyDetails', updatedFamilyDetails);
+//             }}
+//           />
 //         );
 //       case 'medical':
 //         return (
 //           <MedicalRecordsForm
-//   medicalRecords={formData.medicalRecords} // Correct binding
-//   onChange={(id, field, value) => {
-//     const updatedMedicalRecords = formData.medicalRecords.map((record) =>
-//       record.id === id ? { ...record, [field]: value } : record
-//     );
-//     // console.log('Updated Medical Records:', updatedMedicalRecords); // Debugging
-//     updateFormData('medicalRecords', updatedMedicalRecords);
-//   }}
-//   onAdd={() => {
-//     // const newId =
-//     //   formData.medicalRecords.length > 0
-//     //     ? Math.max(...formData.medicalRecords.map((record) => record.id)) + 1
-//     //     : 1;
-//     const newMedicalRecord = {
-//       // id: newId,
-//       condition: '',
-//       date: '',
-//       details: '',
-//     };
-//     // console.log('Adding Medical Record:', newMedicalRecord); // Debugging
-//     updateFormData('medicalRecords', [...formData.medicalRecords, newMedicalRecord]);
-//   }}
-//   onRemove={(id) => {
-//     const updatedMedicalRecords = formData.medicalRecords.filter((record) => record.id !== id);
-//     // console.log('Removing Medical Record:', id); // Debugging
-//     updateFormData('medicalRecords', updatedMedicalRecords);
-//   }}
-// />
-
+//             medicalRecords={formData.medicalRecords}
+//             onChange={(id, field, value) => {
+//               const updatedMedicalRecords = formData.medicalRecords.map((record) =>
+//                 record.id === id ? { ...record, [field]: value } : record
+//               );
+//               updateFormData('medicalRecords', updatedMedicalRecords);
+//             }}
+//             onAdd={() => {
+//               const newId =
+//                 formData.medicalRecords.length > 0
+//                   ? Math.max(...formData.medicalRecords.map((record) => record.id)) + 1
+//                   : 1;
+//               updateFormData('medicalRecords', [
+//                 ...formData.medicalRecords,
+//                 { id: newId, condition: '', date: '', details: '' },
+//               ]);
+//             }}
+//             onRemove={(id) => {
+//               const updatedMedicalRecords = formData.medicalRecords.filter(
+//                 (record) => record.id !== id
+//               );
+//               updateFormData('medicalRecords', updatedMedicalRecords);
+//             }}
+//           />
 //         );
 //       default:
 //         return null;
@@ -355,6 +363,12 @@
 //       {error && (
 //         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
 //           <p className="text-sm text-red-600">{error}</p>
+//         </div>
+//       )}
+
+//       {successMessage && (
+//         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
+//           <p className="text-sm text-green-600">{successMessage}</p>
 //         </div>
 //       )}
 
@@ -403,11 +417,9 @@
 //       </form>
 //     </div>
 //   );
-// }
+// };
 
-
-
-
+// export default UpdateEmployee;
 
 
 import React, { useState, useEffect } from 'react';
@@ -500,6 +512,11 @@ const initialFormState: FormState = {
   medicalRecords: [{ id: 1, condition: '', date: '', details: '' }],
 };
 
+// Utility: always drop any `id` key
+function stripIds<T extends { id?: any }>(array: T[]): Omit<T, 'id'>[] {
+  return array.map(({ id, ...rest }) => rest);
+}
+
 const UpdateEmployee: React.FC = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('personal');
@@ -527,12 +544,11 @@ const UpdateEmployee: React.FC = () => {
               address: data.address || '',
             },
           });
-        } catch (err) {
+        } catch {
           setError('Failed to fetch employee data');
         }
       }
     };
-
     fetchEmployeeData();
   }, [userId]);
 
@@ -543,16 +559,40 @@ const UpdateEmployee: React.FC = () => {
     setSuccessMessage('');
 
     try {
-      const employeeData = {
-        ...formData.personal,
-        photo: formData.photo,
-        education: formData.education,
-        experience: formData.experience,
-        skills: formData.skills,
-        interests: formData.interests,
-        familyDetails: formData.familyDetails,
-        medicalRecords: formData.medicalRecords,
-      };
+      // Strip any local `id` keys before sending
+      const education = stripIds(formData.education).map(e => ({
+        ...e,
+        year: Number(e.year),   // ensure numeric type
+      }));
+      const experience = stripIds(formData.experience);
+      const familyDetails = stripIds(formData.familyDetails);
+      const medicalRecords = stripIds(formData.medicalRecords);
+
+      let employeeData: FormData | Record<string, any>;
+      if (formData.photo) {
+        const fd = new FormData();
+        Object.entries(formData.personal).forEach(([key, value]) => {
+          fd.append(key, value);
+        });
+        fd.append('photo', formData.photo);
+        fd.append('education', JSON.stringify(education));
+        fd.append('experience', JSON.stringify(experience));
+        fd.append('skills', JSON.stringify(formData.skills));
+        fd.append('interests', JSON.stringify(formData.interests));
+        fd.append('familyDetails', JSON.stringify(familyDetails));
+        fd.append('medicalRecords', JSON.stringify(medicalRecords));
+        employeeData = fd;
+      } else {
+        employeeData = {
+          ...formData.personal,
+          education,
+          experience,
+          skills: formData.skills,
+          interests: formData.interests,
+          familyDetails,
+          medicalRecords,
+        };
+      }
 
       if (userId) {
         await employeeService.updateEmployee(userId, employeeData);
@@ -560,21 +600,15 @@ const UpdateEmployee: React.FC = () => {
       } else {
         setError('User ID not found');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to update employee information. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const updateFormData = <K extends keyof FormState>(
-    section: K,
-    data: FormState[K]
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [section]: data,
-    }));
+  const updateFormData = <K extends keyof FormState>(section: K, data: FormState[K]) => {
+    setFormData(prev => ({ ...prev, [section]: data }));
   };
 
   const renderTabContent = () => {
@@ -584,7 +618,7 @@ const UpdateEmployee: React.FC = () => {
           <>
             <div className="mb-4">
               <PhotoUpload
-                onChange={(e) => {
+                onChange={e => {
                   if (e.target.files?.[0]) {
                     updateFormData('photo', e.target.files[0]);
                   }
@@ -593,7 +627,7 @@ const UpdateEmployee: React.FC = () => {
             </div>
             <PersonalInfoForm
               formData={formData.personal}
-              onChange={(e) => {
+              onChange={e => {
                 const { name, value } = e.target;
                 updateFormData('personal', {
                   ...formData.personal,
@@ -608,25 +642,27 @@ const UpdateEmployee: React.FC = () => {
           <EducationForm
             education={formData.education}
             onChange={(id, field, value) => {
-              const updatedEducation = formData.education.map((edu) =>
+              const updated = formData.education.map(edu =>
                 edu.id === id ? { ...edu, [field]: value } : edu
               );
-              updateFormData('education', updatedEducation);
+              updateFormData('education', updated);
             }}
             onAdd={() => {
               const newId =
                 formData.education.length > 0
-                  ? Math.max(...formData.education.map((edu) => edu.id)) + 1
+                  ? Math.max(...formData.education.map(e => e.id)) + 1
                   : 1;
               updateFormData('education', [
                 ...formData.education,
                 { id: newId, degree: '', institution: '', year: '', field: '' },
               ]);
             }}
-            onRemove={(id) => {
-              const updatedEducation = formData.education.filter((edu) => edu.id !== id);
-              updateFormData('education', updatedEducation);
-            }}
+            onRemove={id =>
+              updateFormData(
+                'education',
+                formData.education.filter(e => e.id !== id)
+              )
+            }
           />
         );
       case 'experience':
@@ -634,25 +670,27 @@ const UpdateEmployee: React.FC = () => {
           <ExperienceForm
             experience={formData.experience}
             onChange={(id, field, value) => {
-              const updatedExperience = formData.experience.map((exp) =>
+              const updated = formData.experience.map(exp =>
                 exp.id === id ? { ...exp, [field]: value } : exp
               );
-              updateFormData('experience', updatedExperience);
+              updateFormData('experience', updated);
             }}
             onAdd={() => {
               const newId =
                 formData.experience.length > 0
-                  ? Math.max(...formData.experience.map((exp) => exp.id)) + 1
+                  ? Math.max(...formData.experience.map(e => e.id)) + 1
                   : 1;
               updateFormData('experience', [
                 ...formData.experience,
                 { id: newId, company: '', position: '', startDate: '', endDate: '', description: '' },
               ]);
             }}
-            onRemove={(id) => {
-              const updatedExperience = formData.experience.filter((exp) => exp.id !== id);
-              updateFormData('experience', updatedExperience);
-            }}
+            onRemove={id =>
+              updateFormData(
+                'experience',
+                formData.experience.filter(e => e.id !== id)
+              )
+            }
           />
         );
       case 'skills':
@@ -660,15 +698,15 @@ const UpdateEmployee: React.FC = () => {
           <SkillsInterestsForm
             skills={formData.skills}
             interests={formData.interests}
-            onAddSkill={(skill) => updateFormData('skills', [...formData.skills, skill])}
-            onRemoveSkill={(index) =>
-              updateFormData('skills', formData.skills.filter((_, i) => i !== index))
+            onAddSkill={skill => updateFormData('skills', [...formData.skills, skill])}
+            onRemoveSkill={i =>
+              updateFormData('skills', formData.skills.filter((_, idx) => idx !== i))
             }
-            onAddInterest={(interest) =>
+            onAddInterest={interest =>
               updateFormData('interests', [...formData.interests, interest])
             }
-            onRemoveInterest={(index) =>
-              updateFormData('interests', formData.interests.filter((_, i) => i !== index))
+            onRemoveInterest={i =>
+              updateFormData('interests', formData.interests.filter((_, idx) => idx !== i))
             }
           />
         );
@@ -677,27 +715,27 @@ const UpdateEmployee: React.FC = () => {
           <FamilyDetailsForm
             familyDetails={formData.familyDetails}
             onChange={(id, field, value) => {
-              const updatedFamilyDetails = formData.familyDetails.map((member) =>
-                member.id === id ? { ...member, [field]: value } : member
+              const updated = formData.familyDetails.map(mem =>
+                mem.id === id ? { ...mem, [field]: value } : mem
               );
-              updateFormData('familyDetails', updatedFamilyDetails);
+              updateFormData('familyDetails', updated);
             }}
             onAdd={() => {
               const newId =
                 formData.familyDetails.length > 0
-                  ? Math.max(...formData.familyDetails.map((member) => member.id)) + 1
+                  ? Math.max(...formData.familyDetails.map(m => m.id)) + 1
                   : 1;
               updateFormData('familyDetails', [
                 ...formData.familyDetails,
                 { id: newId, name: '', relationship: '', contact: '' },
               ]);
             }}
-            onRemove={(id) => {
-              const updatedFamilyDetails = formData.familyDetails.filter(
-                (member) => member.id !== id
-              );
-              updateFormData('familyDetails', updatedFamilyDetails);
-            }}
+            onRemove={id =>
+              updateFormData(
+                'familyDetails',
+                formData.familyDetails.filter(m => m.id !== id)
+              )
+            }
           />
         );
       case 'medical':
@@ -705,27 +743,27 @@ const UpdateEmployee: React.FC = () => {
           <MedicalRecordsForm
             medicalRecords={formData.medicalRecords}
             onChange={(id, field, value) => {
-              const updatedMedicalRecords = formData.medicalRecords.map((record) =>
-                record.id === id ? { ...record, [field]: value } : record
+              const updated = formData.medicalRecords.map(rec =>
+                rec.id === id ? { ...rec, [field]: value } : rec
               );
-              updateFormData('medicalRecords', updatedMedicalRecords);
+              updateFormData('medicalRecords', updated);
             }}
             onAdd={() => {
               const newId =
                 formData.medicalRecords.length > 0
-                  ? Math.max(...formData.medicalRecords.map((record) => record.id)) + 1
+                  ? Math.max(...formData.medicalRecords.map(r => r.id)) + 1
                   : 1;
               updateFormData('medicalRecords', [
                 ...formData.medicalRecords,
                 { id: newId, condition: '', date: '', details: '' },
               ]);
             }}
-            onRemove={(id) => {
-              const updatedMedicalRecords = formData.medicalRecords.filter(
-                (record) => record.id !== id
-              );
-              updateFormData('medicalRecords', updatedMedicalRecords);
-            }}
+            onRemove={id =>
+              updateFormData(
+                'medicalRecords',
+                formData.medicalRecords.filter(r => r.id !== id)
+              )
+            }
           />
         );
       default:
@@ -755,7 +793,7 @@ const UpdateEmployee: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            {TABS.map((tab) => {
+            {TABS.map(tab => {
               const Icon = tab.icon;
               return (
                 <button

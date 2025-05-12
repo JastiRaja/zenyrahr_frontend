@@ -11,10 +11,12 @@ interface AuthContextType {
 
 interface User {
   id: string;
-  email: string;
   firstName: string;
   lastName: string;
-  role: Role;
+  email: string;
+  department: string;
+  role: string;
+  permissions: string[];
 }
 
 interface LoginResponse {

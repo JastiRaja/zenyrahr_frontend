@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, MapPin, Users, Clock, Building2, IndianRupee } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api/axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
@@ -28,11 +28,13 @@ export default function PostJob() {
     benefits: '',
     status: RECRUITMENT_STATUS.OPEN
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_BASE_URL}/recruitment-details`, formData);
+      setSubmitting(true);
+      const response = await api.post('/recruitment-details', formData);
       navigate('/recruitment');
     } catch (error) {
       console.error('Error posting job:', error);

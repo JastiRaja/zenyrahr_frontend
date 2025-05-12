@@ -189,13 +189,12 @@ export default function Dashboard() {
     try {
       setLoading(true);
 
-      // Fetch all required data in parallel
-      const [employeesResponse, leaveRequestsResponse] = await Promise.all([
+      // Fetch all required data in parallel, including recruitment details
+      const [employeesResponse, leaveRequestsResponse, recruitmentResponse] = await Promise.all([
         axios.get(`${API_BASE_URL}/auth/employees`),
         axios.get(`${API_BASE_URL}/api/leave-requests`),
+        axios.get(`${API_BASE_URL}/recruitment-details`),
       ]);
-
-      // console.log("Employees response:", employeesResponse.data);
 
       // Calculate total employees and growth
       const currentEmployees = Array.isArray(employeesResponse.data)
@@ -229,11 +228,14 @@ export default function Dashboard() {
             ).toFixed(2)
           : 0;
 
-      // For now, set some default values for attendance and positions
+      // Fetch open positions from recruitment data
+      const recruitmentData = recruitmentResponse.data || [];
+      const openPositions = recruitmentData.filter((job: any) => job.status === "OPEN").length;
+      const positionTrend = 3.1; // You can update this if you want to calculate a trend
+
+      // For now, set some default values for attendance
       const averageAttendance = 95;
       const attendanceTrend = 1.2;
-      const openPositions = 2;
-      const positionTrend = 3.1;
 
       // Update stats
       setStats({

@@ -74,7 +74,7 @@ export default function TimesheetApprovals() {
       setLoading(true);
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/timesheet/employee/${user.id}`
+          `${API_BASE_URL}/api/timesheet/employee/${user.id}`
         );
         const timesheetsData: Timesheet[] = response.data;
 
@@ -150,7 +150,7 @@ export default function TimesheetApprovals() {
     if (!approvalComment) return;
 
     try {
-      const apiUrl = `${API_BASE_URL}/timesheet/approve/${id}?employeeId=${
+      const apiUrl = `${API_BASE_URL}/api/timesheet/approve/${id}?employeeId=${
         user.id
       }&approved=true&requiredComments=${encodeURIComponent(approvalComment)}`;
 
@@ -184,7 +184,7 @@ export default function TimesheetApprovals() {
     if (!rejectionComment) return;
 
     try {
-      const apiUrl = `${API_BASE_URL}/timesheet/reject/${id}?employeeId=${
+      const apiUrl = `${API_BASE_URL}/api/timesheet/reject/${id}?employeeId=${
         user.id
       }&requiredComments=${encodeURIComponent(rejectionComment)}`;
 

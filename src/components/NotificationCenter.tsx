@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, X, Calendar, Plane, FileText, DollarSign, UserPlus, IndianRupee, Check } from 'lucide-react';
-import axios from 'axios';
+import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -44,86 +44,8 @@ export default function NotificationCenter({ isOpen, onClose, setNotificationCou
     try {
       setLoading(true);
       setError(null);
-      const endpoints = [];
-
-      // For managers: show new requests from their team members
-      if (hasPermission('approve', 'expenses')) {
-        // Recent requests from team members
-        endpoints.push(
-          axios.get(`${API_BASE_URL}/api/leave-requests/team/${user.id}?status=PENDING`),
-          axios.get(`${API_BASE_URL}/api/travel-requests/team/${user.id}?status=PENDING`),
-          axios.get(`${API_BASE_URL}/api/expenses/team/${user.id}?status=PENDING`),
-          axios.get(`${API_BASE_URL}/api/timesheet/team/${user.id}?status=PENDING`)
-        );
-      }
-
-      // For HR and admin: show referral requests
-      if (hasPermission('read', 'employees')) {
-        endpoints.push(axios.get(`${API_BASE_URL}/api/referrals?status=PENDING`));
-      }
-
-      // For admin: show first level approved requests and manager leave requests
-      if (hasPermission('admin', 'all')) {
-        endpoints.push(
-          // First level approved requests
-          axios.get(`${API_BASE_URL}/api/travel-requests?status=FIRST_LEVEL_APPROVED`),
-          axios.get(`${API_BASE_URL}/api/expenses?status=FIRST_LEVEL_APPROVED`),
-          // Manager leave requests
-          axios.get(`${API_BASE_URL}/api/leave-requests/managers?status=PENDING`)
-        );
-      }
-
-      const responses = await Promise.all(
-        endpoints.map(p => p.catch(error => {
-          console.error('Error fetching notifications:', error);
-          return { data: [] };
-        }))
-      );
-
-      let allNotifications: Notification[] = [];
-
-      if (hasPermission('approve', 'expenses')) {
-        // Process team member requests for managers
-        const [teamLeave, teamTravel, teamExpense, teamTimesheet, ...rest] = responses;
-        
-        allNotifications = [
-          ...processLeaveRequests(teamLeave.data || [], true),
-          ...processTravelRequests(teamTravel.data || [], true),
-          ...processExpenseRequests(teamExpense.data || [], true),
-          ...processTimesheets(teamTimesheet.data || [], true)
-        ];
-
-        if (hasPermission('admin', 'all')) {
-          // Process admin notifications
-          const [firstLevelTravel, firstLevelExpense, managerLeave] = rest;
-          
-          // Add first level approved requests
-          allNotifications = [
-            ...allNotifications,
-            ...processTravelRequests(firstLevelTravel.data || [], true, 'First level approved travel request from'),
-            ...processExpenseRequests(firstLevelExpense.data || [], true, 'First level approved expense from'),
-            ...processLeaveRequests(managerLeave.data || [], true, 'Manager leave request from')
-          ];
-        }
-      }
-
-      // Process referral notifications for HR and admin
-      if (hasPermission('read', 'employees')) {
-        const referralResponse = responses[responses.length - 1];
-        allNotifications = [
-          ...allNotifications,
-          ...processReferralRequests(referralResponse.data || [])
-        ];
-      }
-
-      // Filter out notifications older than 7 days and sort by timestamp
-      allNotifications = allNotifications
-        .filter(notification => 
-          dayjs(notification.timestamp).isAfter(dayjs().subtract(7, 'day'))
-        )
-        .sort((a, b) => dayjs(b.timestamp).valueOf() - dayjs(a.timestamp).valueOf());
-
-      setNotifications(allNotifications);
+      const response = await api.get('/notifications');
+      setNotifications(response.data);
     } catch (error) {
       console.error('Error fetching notifications:', error);
       setError('Failed to fetch notifications');

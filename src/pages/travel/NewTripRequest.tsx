@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -31,44 +31,6 @@ export default function NewTripRequest() {
   });
 
   const [notification, setNotification] = useState<string | null>(null);
-  const [tripStats, setTripStats] = useState({
-    averageCost: 0,
-    processingTime: 0,
-    successRate: 0,
-  });
-
-  useEffect(() => {
-    const fetchTripStats = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/trip-stats`);
-        if (!response.ok) {
-          // Set default values if endpoint is not available
-          setTripStats({
-            averageCost: 0,
-            processingTime: 0,
-            successRate: 0,
-          });
-          return;
-        }
-        const data = await response.json();
-        setTripStats({
-          averageCost: data.averageCost,
-          processingTime: data.processingTime,
-          successRate: data.successRate,
-        });
-      } catch (error) {
-        console.error("Error fetching trip stats:", error);
-        // Set default values on error
-        setTripStats({
-          averageCost: 0,
-          processingTime: 0,
-          successRate: 0,
-        });
-      }
-    };
-
-    fetchTripStats();
-  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -204,42 +166,6 @@ export default function NewTripRequest() {
           <span>{notification}</span>
         </div>
       )}
-
-      {/* Trip Summary Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
-        {[
-          {
-            label: "Average Trip Cost",
-            value: `₹${tripStats.averageCost}`,
-            type: "Per Trip",
-          },
-          {
-            label: "Processing Time",
-            value: `${tripStats.processingTime} hrs`,
-            type: "Average",
-          },
-          {
-            label: "Success Rate",
-            value: `${tripStats.successRate}%`,
-            type: "Approval",
-          },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="card p-4 bg-gradient-to-br from-purple-50 to-white border-2 border-purple-100 hover:border-purple-200 transition-colors duration-300"
-          >
-            <h3 className="text-sm font-medium text-purple-600">
-              {stat.label}
-            </h3>
-            <p className="mt-2 flex items-baseline">
-              <span className="text-2xl font-semibold text-purple-900">
-                {stat.value}
-              </span>
-              <span className="ml-2 text-sm text-purple-500">{stat.type}</span>
-            </p>
-          </div>
-        ))}
-      </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Basic Trip Information */}

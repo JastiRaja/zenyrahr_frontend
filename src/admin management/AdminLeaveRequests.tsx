@@ -63,7 +63,7 @@ export default function AdminLeaveRequests() {
 
       // Fetch employees and leave types
       const [employeesResponse, leaveTypesResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/employees`),
+        axios.get(`${API_BASE_URL}/auth/employees`),
         axios.get(`${API_BASE_URL}/api/leave-types`),
       ]);
 
