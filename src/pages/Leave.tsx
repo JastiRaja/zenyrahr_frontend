@@ -68,12 +68,12 @@ export default function Leave() {
 
     const fetchLeaveRequests = async () => {
       try {
-        console.log("Fetching leave requests for user:", user.id);
+        // console.log("Fetching leave requests for user:", user.id);
         const response = await axios.get(
           `${API_BASE_URL}/api/leave-requests/employee/${user.id}`
         );
 
-        console.log("Received leave requests:", response.data);
+        // console.log("Received leave requests:", response.data);
 
         const processedRequests = response.data.map(
           (request: LeaveRequest) => ({
@@ -89,7 +89,7 @@ export default function Leave() {
           })
         );
 
-        console.log("Processed leave requests:", processedRequests);
+        // console.log("Processed leave requests:", processedRequests);
 
         // ✅ Sort requests by createdAt in descending order (most recent first)
         const sortedRequests = processedRequests.sort(

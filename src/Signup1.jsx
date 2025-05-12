@@ -122,7 +122,7 @@ export default function SignUp(props) {
       }
 
       const responseData = await response.json();
-      console.log('Success:', responseData);
+      // console.log('Success:', responseData);
 
       setFormValues({
         firstname: '',

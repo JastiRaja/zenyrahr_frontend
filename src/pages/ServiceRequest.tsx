@@ -53,7 +53,7 @@ export default function ServiceRequest() {
       );
 
       setMessage("Service request submitted successfully.");
-      console.log("Service request submitted:", response.data);
+      // console.log("Service request submitted:", response.data);
       navigate("/self-service");
     } catch (error) {
       console.error(

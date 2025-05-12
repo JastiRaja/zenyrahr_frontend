@@ -61,7 +61,7 @@ export default function LeaveSummary({ hideSecondRow }: LeaveSummaryProps) {
           }
         });
 
-        console.log("✅ Final Processed Leave Balances:", balances);
+        // console.log("✅ Final Processed Leave Balances:", balances);
         setLeaveBalances(balances);
       } catch (err) {
         console.error("❌ Error fetching leave data:", err);

@@ -51,11 +51,11 @@ export default function AdminLeaveBalances() {
         ]
       );
 
-      console.log("✅ API Responses:", {
-        leaveBalancesRes,
-        employeesRes,
-        leaveTypesRes,
-      });
+      // console.log("✅ API Responses:", {
+      //   leaveBalancesRes,
+      //   employeesRes,
+      //   leaveTypesRes,
+      // });
 
       const employeeList = Array.isArray(employeesRes.data)
         ? employeesRes.data
@@ -102,7 +102,7 @@ export default function AdminLeaveBalances() {
       balance: newTotalBalance,
     };
 
-    console.log("📨 Sending Leave Balance Data:", payload);
+    // console.log("📨 Sending Leave Balance Data:", payload);
 
     try {
       const response = await axios.post(
@@ -111,7 +111,7 @@ export default function AdminLeaveBalances() {
         { headers: { "Content-Type": "application/json" } }
       );
 
-      console.log("✅ Leave Balance Added Successfully:", response.data);
+      // console.log("✅ Leave Balance Added Successfully:", response.data);
 
       // **Update UI instantly**
       setLeaveBalances((prevBalances) => [

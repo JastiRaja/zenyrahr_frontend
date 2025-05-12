@@ -176,7 +176,7 @@ export default function ManageEntities() {
 
   const handleDeleteWorkLocation = async (workLocationId: number) => {
     try {
-      console.log(`Deleting work location with ID: ${workLocationId}`);
+      // console.log(`Deleting work location with ID: ${workLocationId}`);
       const response = await fetch(
         `${API_BASE_URL}/location/${workLocationId}`,
         {
@@ -185,9 +185,9 @@ export default function ManageEntities() {
       );
 
       if (response.ok) {
-        console.log(
-          `Successfully deleted work location with ID: ${workLocationId}`
-        );
+        // console.log(
+        //   `Successfully deleted work location with ID: ${workLocationId}`
+        // );
         setWorkLocations((prev) =>
           prev.filter((workLocation) => workLocation.id !== workLocationId)
         );
