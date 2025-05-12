@@ -1,5 +1,5 @@
 import api from './api';
-import { Employee } from '../types';
+import { Employee } from '../types/index';
 
 class EmployeeService {
   async createEmployee(employeeData: Partial<Employee>) {
@@ -14,7 +14,6 @@ class EmployeeService {
 
   async getEmployee(id: string) {
     try {
-      // Ensure id is valid
       if (!id) {
         throw new Error('Employee ID is required');
       }
@@ -22,43 +21,47 @@ class EmployeeService {
       const response = await api.get(`auth/employees/${id}`);
       return response.data;
     } catch (error: any) {
-      console.error('Error fetching employee:', error.response?.data || error.message);
       if (error.response?.status === 401) {
-        throw new Error('Unauthorized access. Please log in again.');
+        throw new Error('Session expired. Please log in again.');
       }
       if (error.response?.status === 404) {
         throw new Error('Employee not found');
       }
+      console.error('Error fetching employee:', error.response?.data || error.message);
       throw error;
     }
   }
 
-  async updateEmployee(id: string, updatedData: Partial<Employee>) {
+  async updateEmployee(id: string, updatedData: Partial<Employee> | FormData) {
     try {
-      // Ensure id is valid
       if (!id) {
         throw new Error('Employee ID is required');
       }
 
-      // First get the current employee data
       const currentData = await this.getEmployee(id);
       
-      // Merge the current data with the updates
-      const mergedData = {
+      const mergedData = updatedData instanceof FormData ? updatedData : {
         ...currentData,
         ...updatedData,
       };
 
-      const response = await api.put(`auth/employees/${id}`, mergedData);
+      const config = updatedData instanceof FormData ? { 
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        } 
+      } : {};
+
+      const response = await api.put(`auth/employees/${id}`, mergedData, config);
       return response.data;
     } catch (error: any) {
-      console.error('Error updating employee:', error.response?.data || error.message);
       if (error.response?.status === 401) {
-        throw new Error('Unauthorized access. Please log in again.');
+        throw new Error('Session expired. Please log in again.');
       }
       if (error.response?.status === 404) {
         throw new Error('Employee not found');
       }
+      console.error('Error updating employee:', error.response?.data || error.message);
       throw error;
     }
   }

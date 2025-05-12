@@ -7,13 +7,17 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true // Enable sending cookies with requests
+  withCredentials: true
 });
 
 // Add request interceptor for auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    // Try to get token from different possible locations
+    const token = localStorage.getItem("token") || 
+                 localStorage.getItem("auth_token") || 
+                 localStorage.getItem("authState")?.token;
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -29,9 +33,33 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Try to refresh token
+      const refreshToken = localStorage.getItem("refreshToken") || 
+                          localStorage.getItem("refresh_token");
+      
+      if (refreshToken) {
+        try {
+          const response = await axios.post(`${BASE_URL}/auth/refresh-token`, {
+            refreshToken
+          });
+          
+          const { token } = response.data;
+          localStorage.setItem("token", token);
+          
+          // Retry the original request
+          error.config.headers.Authorization = `Bearer ${token}`;
+          return axios(error.config);
+        } catch (refreshError) {
+          // If refresh fails, clear everything and redirect to login
+          localStorage.clear();
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
+        }
+      } else {
+        // No refresh token, clear everything and redirect to login
+        localStorage.clear();
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

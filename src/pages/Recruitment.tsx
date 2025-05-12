@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Users, Clock, Plus } from 'lucide-react';
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
+import api from '../api/axios';
 
 interface Recruitment {
   id: number;
@@ -38,7 +36,7 @@ export default function Recruitment() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/recruitment-details`);
+      const response = await api.get('/recruitment-details');
       setJobs(response.data);
       setError(null);
     } catch (err) {

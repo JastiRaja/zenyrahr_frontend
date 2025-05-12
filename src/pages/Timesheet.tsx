@@ -100,7 +100,7 @@ export default function Timesheet() {
     const fetchTimesheets = async () => {
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/timesheet/employee/${user.id}`
+          `${API_BASE_URL}/api/timesheet/employee/${user.id}`
         );
 
         const processedEntries = response.data.map((entry: any) => ({

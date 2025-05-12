@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Briefcase, MapPin, Users, Clock, Building2, IndianRupee, X, Edit2, Check } from 'lucide-react';
-import axios from 'axios';
+import api from '../../api/axios';
 import { useAuth } from '../../contexts/AuthContext';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
 // Define recruitment status options
 const RECRUITMENT_STATUS = {
@@ -80,14 +78,13 @@ export default function JobDetails() {
   const fetchJobDetails = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/recruitment-details/${id}`);
-      const jobData = response.data;
-      setJob(jobData);
-      setReferralForm(prev => ({ ...prev, recruitment: jobData }));
+      const response = await api.get(`/recruitment-details/${id}`);
+      setJob(response.data);
+      setReferralForm(prev => ({ ...prev, recruitment: response.data }));
       setError(null);
-    } catch (err) {
+    } catch (error) {
       setError('Failed to fetch job details');
-      console.error('Error fetching job:', err);
+      console.error('Error:', error);
     } finally {
       setLoading(false);
     }
@@ -115,7 +112,7 @@ export default function JobDetails() {
 
       // console.log('Sending referral payload:', referralPayload);
 
-      const response = await axios.post(`${API_BASE_URL}/api/referrals`, referralPayload);
+      const response = await api.post('/api/referrals', referralPayload);
       
       if (response.data) {
         setShowReferralForm(false);
@@ -142,7 +139,7 @@ export default function JobDetails() {
     try {
       if (!job?.id) return;
 
-      const response = await axios.patch(`${API_BASE_URL}/recruitment-details/${job.id}/status`, {
+      const response = await api.patch(`/recruitment-details/${job.id}/status`, {
         status: selectedStatus
       });
 

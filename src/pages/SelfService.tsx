@@ -10,6 +10,7 @@ import {
   FileText,
   Wrench,
 } from "lucide-react";
+import api from '../api/axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
@@ -31,12 +32,11 @@ export default function SelfService() {
     const fetchPersonalInfo = async (employeeId: string) => {
       // // console.log("Fetching for ID:", employeeId);
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/auth/employees/${employeeId}`
-        );
-        const text = await response.text();
+        const response = await api.get(`/auth/employees/${employeeId}`);
+        // const text = await response.data;
+        const data = response.data;
         // // console.log("Raw Response:", text);
-        const data = JSON.parse(text);
+        // const data = JSON.parse(text);
         // // console.log("Parsed Data:", data);
         setPersonalInfo({
           name: `${data.firstName} ${data.lastName}`,
