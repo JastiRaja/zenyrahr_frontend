@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Users, Clock } from 'lucide-react';
-import axios from 'axios';
+import api from '../api/axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
@@ -37,7 +37,7 @@ export default function JobOpenings() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/recruitment-details`);
+      const response = await api.get(`/api/job-openings`);
       // Only show OPEN jobs for employees
       const openJobs = response.data.filter((job: JobPosting) => job.status === 'OPEN');
       setJobs(openJobs);

@@ -21,7 +21,6 @@ import TimesheetApprovals from "./pages/approvals/TimesheetApprovals";
 import Leave from "./pages/Leave";
 import RequestLeave from "./pages/leave/RequestLeave";
 import LeaveApprovals from "./pages/approvals/LeaveApprovals";
-import Payroll from "./pages/Payroll";
 import Analytics from "./pages/Analytics";
 import Performance from "./pages/Performance";
 import Travel from "./pages/Travel";
@@ -290,18 +289,6 @@ export default function App() {
                     ]}
                   >
                     <LeaveApprovals />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="payroll"
-                element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "read", subject: "payroll" },
-                    ]}
-                  >
-                    <Payroll />
                   </ProtectedRoute>
                 }
               />

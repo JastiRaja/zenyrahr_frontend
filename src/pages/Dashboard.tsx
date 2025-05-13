@@ -25,7 +25,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import axios from "axios";
+import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -118,10 +118,10 @@ export default function Dashboard() {
       // Fetch employee-specific data
       const [leaveResponse, attendanceResponse, requestsResponse] =
         await Promise.all([
-          axios.get(`${API_BASE_URL}/api/leave-requests/employee/${user.id}`),
-          axios.get(`${API_BASE_URL}/api/timesheet/employee/${user.id}`),
-          axios.get(
-            `${API_BASE_URL}/api/leave-requests/employee/${user.id}/pending`
+          api.get(`/api/leave-requests/employee/${user.id}`),
+          api.get(`/api/timesheet/employee/${user.id}`),
+          api.get(
+            `/api/leave-requests/employee/${user.id}/pending`
           ),
         ]);
 
@@ -191,9 +191,9 @@ export default function Dashboard() {
 
       // Fetch all required data in parallel, including recruitment details
       const [employeesResponse, leaveRequestsResponse, recruitmentResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/auth/employees`),
-        axios.get(`${API_BASE_URL}/api/leave-requests`),
-        axios.get(`${API_BASE_URL}/recruitment-details`),
+        api.get(`/auth/employees`),
+        api.get(`/api/leave-requests`),
+        api.get(`/recruitment-details`),
       ]);
 
       // Calculate total employees and growth
@@ -278,10 +278,10 @@ export default function Dashboard() {
         timesheetsResponse,
         jobPostingsResponse,
       ] = await Promise.all([
-        axios.get(`${API_BASE_URL}/auth/employees`),
-        axios.get(`${API_BASE_URL}/api/leave-requests`),
-        axios.get(`${API_BASE_URL}/api/timesheets`),
-        axios.get(`${API_BASE_URL}/recruitment-details`),
+        api.get(`/auth/employees`),
+        api.get(`/api/leave-requests`),
+        api.get(`/api/timesheet`),
+        api.get(`/recruitment-details`),
       ]);
 
       const activities: Activity[] = [];
@@ -440,7 +440,7 @@ export default function Dashboard() {
       name: "Post Job",
       icon: Briefcase,
       color: "bg-purple-500",
-      href: "/recruitment/post-job",
+      href: "/recruitment/post",
     },
     // {
     //   name: "Review Performance",

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../api/axios";
 import dayjs from "dayjs";
 import { Check, X, Search, Eye } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -72,8 +72,8 @@ export default function LeaveApprovals() {
         // console.log("Fetching all leave requests for approvals");
         const [leaveRequestsResponse, leaveBalancesResponse] =
           await Promise.all([
-            axios.get(`${API_BASE_URL}/api/leave-requests`),
-            axios.get(`${API_BASE_URL}/api/leave-balances`),
+            api.get(`/api/leave-requests`),
+            api.get(`/api/leave-balances`),
           ]);
 
         // console.log(
@@ -131,7 +131,7 @@ export default function LeaveApprovals() {
 
   const handleApprove = async (id: number) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/leave-requests/${id}/approve`);
+      await api.put(`/api/leave-requests/${id}/approve`);
 
       // Remove the approved leave from the list
       setLeaveRequests((prev) => prev.filter((req) => req.id !== id));
@@ -146,7 +146,7 @@ export default function LeaveApprovals() {
 
   const handleReject = async (id: number) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/leave-requests/${id}/reject`);
+      await api.put(`/api/leave-requests/${id}/reject`);
 
       // Remove the rejected leave from the list
       setLeaveRequests((prev) => prev.filter((req) => req.id !== id));

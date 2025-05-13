@@ -94,12 +94,6 @@ const getNavigation = (
   },
 
   // {
-  //   name: "Payroll",
-  //   href: "/payroll",
-  //   icon: DollarSign,
-  //   show: () => hasPermission("read", "payroll"),
-  // },
-  // {
   //   name: "HR Analytics",
   //   href: "/analytics",
   //   icon: BarChart3,

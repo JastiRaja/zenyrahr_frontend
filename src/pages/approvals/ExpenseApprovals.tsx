@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../api/axios";
 import dayjs from "dayjs";
 import { Check, X, Search } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -112,10 +112,10 @@ export default function ExpenseApprovals() {
       setLoading(true);
       try {
         const [pendingExp, approvedExp, pendingTrav, approvedTrav] = await Promise.all([
-          axios.get(`${API_BASE_URL}/api/expenses/pending`),
-          axios.get(`${API_BASE_URL}/api/expenses/approved`),
-          axios.get(`${API_BASE_URL}/api/travel-requests/pending`),
-          axios.get(`${API_BASE_URL}/api/travel-requests/approved`),
+          api.get(`/api/expenses/pending`),
+          api.get(`/api/expenses/approved`),
+          api.get(`/api/travel-requests/pending`),
+          api.get(`/api/travel-requests/approved`),
         ]);
         setPendingExpenses(pendingExp.data);
         setApprovedExpenses(approvedExp.data);
@@ -187,8 +187,8 @@ export default function ExpenseApprovals() {
 
     try {
       const approverName = getApproverName();
-      const response = await axios.put(
-        `${API_BASE_URL}/api/expenses/${id}/approve-first-level`,
+      const response = await api.put(
+        `/api/expenses/${id}/approve-first-level`,
         null,
         {
           params: {
@@ -236,8 +236,8 @@ export default function ExpenseApprovals() {
 
     try {
       const approverName = getApproverName();
-      const response = await axios.put(
-        `${API_BASE_URL}/api/expenses/${id}/reject-first-level`,
+      const response = await api.put(
+        `/api/expenses/${id}/reject-first-level`,
         null,
         {
           params: {
@@ -282,8 +282,8 @@ export default function ExpenseApprovals() {
     try {
       if (selectedRequest._type === 'expense') {
         const approverName = getApproverName();
-        const response = await axios.put(
-          `${API_BASE_URL}/api/expenses/${selectedRequest.id}/approve-first-level`,
+        const response = await api.put(
+          `/api/expenses/${selectedRequest.id}/approve-first-level`,
           null,
           {
             params: {
@@ -310,8 +310,8 @@ export default function ExpenseApprovals() {
         }
       } else if (selectedRequest._type === 'travel') {
         const approverName = getApproverName();
-        const response = await axios.put(
-          `${API_BASE_URL}/api/travel-requests/${selectedRequest.id}/approve-first-level`,
+        const response = await api.put(
+          `/api/travel-requests/${selectedRequest.id}/approve-first-level`,
           null,
           {
             params: {
@@ -350,8 +350,8 @@ export default function ExpenseApprovals() {
     try {
       if (selectedRequest._type === 'expense') {
         const approverName = getApproverName();
-        const response = await axios.put(
-          `${API_BASE_URL}/api/expenses/${selectedRequest.id}/reject-first-level`,
+        const response = await api.put(
+          `/api/expenses/${selectedRequest.id}/reject-first-level`,
           null,
           {
             params: {
@@ -378,8 +378,8 @@ export default function ExpenseApprovals() {
         }
       } else if (selectedRequest._type === 'travel') {
         const approverName = getApproverName();
-        const response = await axios.put(
-          `${API_BASE_URL}/api/travel-requests/${selectedRequest.id}/reject-first-level`,
+        const response = await api.put(
+          `/api/travel-requests/${selectedRequest.id}/reject-first-level`,
           null,
           {
             params: {
