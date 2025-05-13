@@ -36,6 +36,26 @@ dayjs.extend(isoWeek);
 dayjs.extend(isBetween);
 dayjs.extend(isSameOrBefore);
 
+interface Timesheet {
+  id: number;
+  date: string;
+  hoursWorked: number;
+  taskDescription: string;
+  comments: string;
+  project: {
+    id: number;
+    projectName: string;
+  };
+  status: string;
+  approvedBy: string | null;
+  approvalComments: string | null;
+  rejectionReason: string | null;
+}
+
+const calculateTotalHours = (timesheet: Timesheet): number => {
+  return timesheet.hoursWorked || 0;
+};
+
 export default function Timesheet() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -100,57 +120,44 @@ export default function Timesheet() {
     const fetchTimesheets = async () => {
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/api/timesheet/employee/${user.id}`
+          `${API_BASE_URL}/api/timesheets/employee/${user.id}`
         );
 
-        const processedEntries = response.data.map((entry: any) => ({
-          id: entry.id,
-          date: entry.date || "",
-          hoursWorked: entry.hoursWorked ?? 0,
-          taskDescription:
-            entry.taskDescription || entry.description || "No Description",
-          comments: entry.comments || entry.requiredComments || "No Comments",
-          project: entry.project
-            ? { id: entry.project.id, projectName: entry.project.projectName }
-            : { id: 0, projectName: "No Project" },
-          status: entry.status || "PENDING",
-          approvedBy:
-            entry.status === "WITHDRAWN"
-              ? employeeName // Withdrawn by employee
-              : entry.status === "APPROVED"
-              ? reportingManager // Approved by Manager
-              : entry.status === "REJECTED"
-              ? reportingManager // Rejected by Manager
-              : null, // PENDING has no value
-          approvalComments: entry.approvalComments || null,
-          rejectionReason: entry.rejectionReason || null,
+        // Ensure response.data is an array
+        const timesheetData = Array.isArray(response.data) ? response.data : [];
+        
+        const processedTimesheets = timesheetData.map((timesheet: Timesheet) => ({
+          ...timesheet,
+          totalHours: calculateTotalHours(timesheet),
         }));
 
-        setAllEntries(processedEntries);
+        setAllEntries(processedTimesheets);
 
         // Set initial date range to the latest week
-        const latestDate: dayjs.Dayjs = processedEntries.reduce(
+        const latestDate: dayjs.Dayjs = processedTimesheets.reduce(
           (latest: dayjs.Dayjs, entry: TimesheetEntry) => {
             const entryDate: dayjs.Dayjs = dayjs(entry.date);
             return entryDate.isAfter(latest) ? entryDate : latest;
           },
-          dayjs(processedEntries[0].date)
+          dayjs(processedTimesheets[0].date)
         );
 
         const startOfWeek = latestDate.startOf("isoWeek").toDate();
         const endOfWeek = latestDate.startOf("isoWeek").add(4, "day").toDate();
         setStartDate(startOfWeek);
         setEndDate(endOfWeek);
-      } catch (error) {
-        console.error("Error fetching timesheets:", error);
-        setError("Failed to load timesheet entries.");
+      } catch (err) {
+        console.error("Error fetching timesheets:", err);
+        setError("Failed to fetch timesheets.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchTimesheets();
-  }, [user?.id, reportingManager, employeeName]);
+    const interval = setInterval(fetchTimesheets, 30000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   // Filter Entries Based on Selected Date Range
   useEffect(() => {
