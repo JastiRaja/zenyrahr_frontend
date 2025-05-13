@@ -82,7 +82,6 @@ export default function SelfService() {
   const quickActions = [
     { name: "Apply for Leave", icon: Calendar, href: "/leave/request" },
     { name: "Submit Timesheet", icon: FileText, href: "/timesheet/submit" },
-    // { name: "View Payslip", icon: FileText, href: "/payroll" },
     { name: "Service Request", icon: Wrench, href: "/service-request" }, // Updated action
   ];
 

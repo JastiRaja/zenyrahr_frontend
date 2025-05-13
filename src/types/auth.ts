@@ -16,17 +16,17 @@ export type Action = 'manage' | 'read' | 'create' | 'update' | 'delete' | 'appro
  
 // Define all possible subjects
 export type Subject =
-  | 'all'
-  | 'employees'
-  | 'recruitment'
+  | 'employee'
   | 'leave'
-  | 'payroll'
-  | 'performance'
+  | 'expense'
+  | 'service-ticket'
+  | 'recruitment'
   | 'timesheet'
-  | 'expenses'
+  | 'travel'
+  | 'project'
   | 'analytics'
-  | 'learning'
-  | 'self';
+  | 'performance'
+  | 'settings';
  
 // Permission interface with strict typing
 export interface Permission {
@@ -57,7 +57,6 @@ export const rolePermissions: Record<Role, Permission[]> = {
     { action: 'manage', subject: 'employees' },
     { action: 'manage', subject: 'recruitment' },
     { action: 'manage', subject: 'leave' },
-    { action: 'read', subject: 'payroll' },
     { action: 'manage', subject: 'performance' },
     { action: 'approve', subject: 'leave' },
     { action: 'approve', subject: 'timesheet' },
@@ -66,8 +65,7 @@ export const rolePermissions: Record<Role, Permission[]> = {
   manager: [
     { action: 'read', subject: 'employees' },
     { action: 'manage', subject: 'recruitment' },
-    { action: 'read', subject: 'payroll' },
-    { action: 'manage', subject: 'performance' },
+    { action: 'read', subject: 'performance' },
     { action: 'read', subject: 'analytics' },
     { action: 'approve', subject: 'timesheet' },
     { action: 'approve', subject: 'leave' },
@@ -80,7 +78,6 @@ export const rolePermissions: Record<Role, Permission[]> = {
     { action: 'read', subject: 'learning' },
     { action: 'submit', subject: 'expenses' },
     { action: 'manage', subject: 'recruitment' },
-    { action: 'read', subject: 'payroll' },
     { action: 'manage', subject: 'performance' },
   ]
 };

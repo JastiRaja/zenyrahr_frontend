@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
@@ -44,13 +44,9 @@ export default function ServiceRequest() {
     });
 
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/service-ticket`,
-        formPayload,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
+      const response = await api.post(`/service-ticket`, formPayload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
       setMessage("Service request submitted successfully.");
       // console.log("Service request submitted:", response.data);
@@ -58,7 +54,7 @@ export default function ServiceRequest() {
     } catch (error) {
       console.error(
         "Error submitting service request:",
-        axios.isAxiosError(error)
+        api.isAxiosError(error)
           ? error.response?.data || error.message
           : error
       );

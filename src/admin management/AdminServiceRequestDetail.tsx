@@ -176,6 +176,7 @@ export default function AdminServiceRequestDetail() {
                             href={url}
                             target="_blank"
                             rel="noopener noreferrer"
+                            download
                             className="flex items-center text-indigo-600 hover:text-indigo-900"
                           >
                             <FileText className="h-4 w-4 mr-2" />

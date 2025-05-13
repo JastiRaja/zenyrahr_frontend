@@ -11,7 +11,7 @@ import {
   X,
   FileText,
 } from "lucide-react";
-import axios from "axios";
+import api from "../api/axios";
 import dayjs from "dayjs";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -70,8 +70,8 @@ export default function Travel() {
           : `${API_BASE_URL}/api/expenses/employee/${user.id}`;
 
         const [tripsResponse, expensesResponse] = await Promise.all([
-          axios.get(tripsEndpoint),
-          axios.get(expensesEndpoint),
+          api.get(tripsEndpoint),
+          api.get(expensesEndpoint),
         ]);
 
         // Transform the response to ensure document data is properly structured
@@ -160,7 +160,7 @@ export default function Travel() {
         ? `${API_BASE_URL}/api/travel-requests/${tripId}/${action}-first-level`
         : `${API_BASE_URL}/api/travel-requests/${tripId}/${action}-second-level`;
 
-      const response = await axios.put(endpoint, null, {
+      const response = await api.put(endpoint, null, {
         params: {
           approverid: user?.id,
           comments: approvalComments
@@ -195,7 +195,7 @@ export default function Travel() {
         ? `${API_BASE_URL}/api/expenses/${expenseId}/${action}-first-level`
         : `${API_BASE_URL}/api/expenses/${expenseId}/${action}-second-level`;
 
-      const response = await axios.put(endpoint, null, {
+      const response = await api.put(endpoint, null, {
         params: {
           approverid: user?.id,
           comments: expenseApprovalComments
