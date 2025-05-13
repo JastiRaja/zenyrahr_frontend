@@ -68,14 +68,14 @@ export default function Leave() {
 
     const fetchLeaveRequests = async () => {
       try {
-        // console.log("Fetching leave requests for user:", user.id);
         const response = await axios.get(
           `${API_BASE_URL}/api/leave-requests/employee/${user.id}`
         );
 
-        // console.log("Received leave requests:", response.data);
-
-        const processedRequests = response.data.map(
+        // Ensure response.data is an array
+        const leaveData = Array.isArray(response.data) ? response.data : [];
+        
+        const processedRequests = leaveData.map(
           (request: LeaveRequest) => ({
             ...request,
             totalDays:
@@ -89,9 +89,7 @@ export default function Leave() {
           })
         );
 
-        // console.log("Processed leave requests:", processedRequests);
-
-        // ✅ Sort requests by createdAt in descending order (most recent first)
+        // Sort requests by createdAt in descending order (most recent first)
         const sortedRequests = processedRequests.sort(
           (a: LeaveRequest, b: LeaveRequest) =>
             dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf()
@@ -105,10 +103,8 @@ export default function Leave() {
     };
 
     fetchLeaveRequests();
-    // Add refresh interval to periodically check for new leaves
-    const interval = setInterval(fetchLeaveRequests, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval); // Cleanup interval on unmount
+    const interval = setInterval(fetchLeaveRequests, 30000);
+    return () => clearInterval(interval);
   }, [user?.id, reportingManager, employeeName]);
 
   // ✅ Withdraw Leave Request
