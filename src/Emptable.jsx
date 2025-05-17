@@ -44,7 +44,7 @@ export default function Emptable() {
 
   useEffect(() => {
     axios
-      .get(`${API_BASE_URL}/employeeinfo`)
+      .get(`${API_BASE_URL}/api/employeeinfo`)
       .then((response) => {
         setRows(response.data);
         setLoading(false);
@@ -84,7 +84,7 @@ export default function Emptable() {
       const updatedRow = { ...selectedRow };
 
       axios
-        .put(`${API_BASE_URL}/employeeinfo/${selectedRow.id}`, updatedRow)
+        .put(`${API_BASE_URL}/api/employeeinfo/${selectedRow.id}`, updatedRow)
         .then((response) => {
           // console.log('Update Response:', response); // Debugging
 

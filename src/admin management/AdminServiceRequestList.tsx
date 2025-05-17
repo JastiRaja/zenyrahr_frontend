@@ -29,7 +29,7 @@ export default function AdminServiceRequestList() {
 
     const fetchServiceRequests = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/service-ticket`, {
+        const response = await axios.get(`${API_BASE_URL}/api/service-ticket`, {
           headers: {
             "Access-Control-Allow-Origin": "http://localhost:5173",
           },

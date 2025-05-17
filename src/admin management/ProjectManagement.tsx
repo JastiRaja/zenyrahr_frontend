@@ -22,7 +22,7 @@ const ProjectManagement: React.FC = () => {
   // ✅ Fetch All Projects
   const fetchProjects = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/projects`);
+      const response = await fetch(`${API_BASE_URL}/api/projects`);
 
       const data = await response.json();
 
@@ -47,7 +47,7 @@ const ProjectManagement: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects`, {
+      const response = await fetch(`${API_BASE_URL}/api/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -82,7 +82,7 @@ const ProjectManagement: React.FC = () => {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/projects/${editProject.id}`,
+        `${API_BASE_URL}/api/projects/${editProject.id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -112,7 +112,7 @@ const ProjectManagement: React.FC = () => {
       return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/projects/${id}`, {
         method: "DELETE",
       });
 

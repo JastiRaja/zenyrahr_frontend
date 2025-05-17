@@ -59,7 +59,7 @@ const AssignManager = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/auth/employees`);
+      const response = await axios.get(`${API_BASE_URL}/api/auth/employees`);
       setEmployees(response.data);
 
       const mappedAssignments = response.data.map((emp: Employee) => ({
@@ -91,7 +91,7 @@ const AssignManager = () => {
       await Promise.all(
         selectedEmployees.map((emp) =>
           axios.put(
-            `${API_BASE_URL}/auth/employees/${emp.value}/manager/${selectedManager.value}`
+            `${API_BASE_URL}/api/auth/employees/${emp.value}/manager/${selectedManager.value}`
           )
         )
       );
@@ -124,7 +124,7 @@ const AssignManager = () => {
       setMessage("");
 
       await axios.put(
-        `${API_BASE_URL}/auth/employees/${employeeId}/manager/${newManager.value}`
+        `${API_BASE_URL}/api/auth/employees/${employeeId}/manager/${newManager.value}`
       );
 
       setMessage(`✅ Manager updated successfully!`);
@@ -143,7 +143,7 @@ const AssignManager = () => {
     try {
       setLoading(true);
       await axios.delete(
-        `${API_BASE_URL}/auth/employees/${employeeId}/manager`
+        `${API_BASE_URL}/api/auth/employees/${employeeId}/manager`
       );
       setMessage("✅ Manager removed successfully!");
       fetchEmployees();

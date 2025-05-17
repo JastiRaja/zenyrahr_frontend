@@ -59,7 +59,7 @@ export default function Employees() {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/auth/employees`);
+        const response = await fetch(`${API_BASE_URL}/api/auth/employees`);
         if (response.ok) {
           const data: Employee[] = await response.json();
           setEmployees(data);

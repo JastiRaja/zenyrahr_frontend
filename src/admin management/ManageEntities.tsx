@@ -21,7 +21,7 @@ export default function ManageEntities() {
     // Fetch initial data for designations, departments, and work locations
     const fetchDesignations = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/Designation`);
+        const response = await fetch(`${API_BASE_URL}/api/Designation`);
         const data = await response.json();
         setDesignations(data);
       } catch (error) {
@@ -31,7 +31,7 @@ export default function ManageEntities() {
 
     const fetchDepartments = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/Department`);
+        const response = await fetch(`${API_BASE_URL}/api/Department`);
         const data = await response.json();
         setDepartments(data);
       } catch (error) {
@@ -41,7 +41,7 @@ export default function ManageEntities() {
 
     const fetchWorkLocations = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/location`);
+        const response = await fetch(`${API_BASE_URL}/api/location`);
         const data = await response.json();
         setWorkLocations(data);
       } catch (error) {
@@ -60,7 +60,7 @@ export default function ManageEntities() {
       !designations.some((d) => d.name === newDesignation)
     ) {
       try {
-        const response = await fetch(`${API_BASE_URL}/Designation`, {
+        const response = await fetch(`${API_BASE_URL}/api/Designation`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -84,7 +84,7 @@ export default function ManageEntities() {
   const handleDeleteDesignation = async (designationId: number) => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/Designation/${designationId}`,
+        `${API_BASE_URL}/api/Designation/${designationId}`,
         {
           method: "DELETE",
         }
@@ -105,7 +105,7 @@ export default function ManageEntities() {
   const handleAddDepartment = async () => {
     if (newDepartment && !departments.some((d) => d.name === newDepartment)) {
       try {
-        const response = await fetch(`${API_BASE_URL}/Department`, {
+        const response = await fetch(`${API_BASE_URL}/api/Department`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -129,7 +129,7 @@ export default function ManageEntities() {
   const handleDeleteDepartment = async (departmentId: number) => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/Department/${departmentId}`,
+        `${API_BASE_URL}/api/Department/${departmentId}`,
         {
           method: "DELETE",
         }
@@ -153,7 +153,7 @@ export default function ManageEntities() {
       !workLocations.some((w) => w.name === newWorkLocation)
     ) {
       try {
-        const response = await fetch(`${API_BASE_URL}/location`, {
+        const response = await fetch(`${API_BASE_URL}/api/location`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -178,7 +178,7 @@ export default function ManageEntities() {
     try {
       // console.log(`Deleting work location with ID: ${workLocationId}`);
       const response = await fetch(
-        `${API_BASE_URL}/location/${workLocationId}`,
+        `${API_BASE_URL}/api/location/${workLocationId}`,
         {
           method: "DELETE",
         }

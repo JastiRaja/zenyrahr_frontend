@@ -84,7 +84,7 @@ export default function TimesheetApprovals() {
 
             try {
               const empResponse = await axios.get(
-                `${API_BASE_URL}/auth/employees/${ts.employeeId}`
+                `${API_BASE_URL}/api/auth/employees/${ts.employeeId}`
               );
               return { ...ts, employee: empResponse.data };
             } catch (err) {
@@ -120,7 +120,7 @@ export default function TimesheetApprovals() {
 
     const fetchEmployees = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/auth/employees`);
+        const response = await axios.get(`${API_BASE_URL}/api/auth/employees`);
         setEmployees(response.data);
       } catch (err) {
         console.error("Failed to fetch employees:", err);

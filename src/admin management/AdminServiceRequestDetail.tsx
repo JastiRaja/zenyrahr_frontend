@@ -42,7 +42,7 @@ export default function AdminServiceRequestDetail() {
     const fetchServiceRequest = async () => {
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/service-ticket/${id}`
+          `${API_BASE_URL}/api/service-ticket/${id}`
         );
         setServiceRequest(response.data);
       } catch (error) {
