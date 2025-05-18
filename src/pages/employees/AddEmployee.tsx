@@ -48,7 +48,7 @@ export default function AddEmployee() {
     // Fetch initial data for designations, departments, and work locations
     const fetchDesignations = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/Designation`);
+        const response = await fetch(`${API_BASE_URL}/api/Designation`);
 
         const data = await response.json();
         setDesignations(data.map((item: any) => item.name));
@@ -59,7 +59,7 @@ export default function AddEmployee() {
 
     const fetchDepartments = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/Department`);
+        const response = await fetch(`${API_BASE_URL}/api/Department`);
 
         const data = await response.json();
         setDepartments(data.map((item: any) => item.name));
@@ -70,7 +70,7 @@ export default function AddEmployee() {
 
     const fetchWorkLocations = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/location`);
+        const response = await fetch(`${API_BASE_URL}/api/location`);
 
         const data = await response.json();
         setWorkLocations(data.map((item: any) => item.name));

@@ -201,7 +201,7 @@ export default function Timesheet() {
       return;
 
     try {
-      await axios.put(`${API_BASE_URL}/timesheet/withdraw/${id}`, {
+      await axios.put(`${API_BASE_URL}/api/timesheet/withdraw/${id}`, {
         status: "WITHDRAWN",
       });
       setAllEntries((prev) =>

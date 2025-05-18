@@ -191,8 +191,8 @@ export default function Dashboard() {
 
       // Fetch all required data in parallel, including recruitment details
       const [employeesResponse, leaveRequestsResponse, recruitmentResponse] = await Promise.all([
-        api.get(`/auth/employees`),
-        api.get(`/api/leave-requests`),
+        api.get(`auth/employees`),
+        api.get(`/leave-requests`),
         api.get(`/recruitment-details`),
       ]);
 

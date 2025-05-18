@@ -73,7 +73,7 @@ export default function JobDetails() {
   const fetchJobDetails = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/recruitment-details/${id}`);
+      const response = await axios.get(`${API_BASE_URL}/api/recruitment-details/${id}`);
       if (response.data.status !== 'OPEN' && !isHRorAdmin) {
         navigate('/job-openings');
         return;
@@ -109,7 +109,7 @@ export default function JobDetails() {
     e.preventDefault();
     try {
       setSubmitting(true);
-      await axios.post(`${API_BASE_URL}/referrals`, {
+      await axios.post(`${API_BASE_URL}/api/referrals`, {
         jobId: id,
         ...referralForm
       });

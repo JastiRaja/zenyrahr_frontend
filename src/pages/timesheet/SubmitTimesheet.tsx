@@ -36,7 +36,7 @@ export default function SubmitTimesheet() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/projects`);
+        const response = await axios.get(`${API_BASE_URL}/api/projects`);
         setProjects(response.data);
       } catch (error) {
         console.error("❌ Error fetching projects:", error);
