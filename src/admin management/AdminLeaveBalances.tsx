@@ -46,7 +46,7 @@ export default function AdminLeaveBalances() {
       const [leaveBalancesRes, employeesRes, leaveTypesRes] = await Promise.all(
         [
           axios.get(`${API_BASE_URL}/api/leave-balances`),
-          axios.get(`${API_BASE_URL}/api/auth/employees`),
+          axios.get(`${API_BASE_URL}/auth/employees`),
           axios.get(`${API_BASE_URL}/api/leave-types`),
         ]
       );

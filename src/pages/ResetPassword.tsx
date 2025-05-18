@@ -79,7 +79,7 @@ export default function ResetPassword() {
     // console.log("New Password:", formValues.newPassword);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/api/auth/resetPassword`,
+        `${API_BASE_URL}/auth/resetPassword`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

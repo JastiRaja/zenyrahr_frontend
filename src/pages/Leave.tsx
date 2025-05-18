@@ -41,7 +41,7 @@ export default function Leave() {
     const fetchUserData = async () => {
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/api/auth/employees/${user.id}`
+          `${API_BASE_URL}/auth/employees/${user.id}`
         );
 
         if (response.data.firstName && response.data.lastName) {

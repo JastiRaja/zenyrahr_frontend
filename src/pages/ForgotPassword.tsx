@@ -80,7 +80,7 @@ export default function ForgotPassword() {
     mouseY.set(0); // Center the eyes vertically
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/forgotPassword`, {
+      const response = await fetch(`${API_BASE_URL}/auth/forgotPassword`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: formValues.email }),

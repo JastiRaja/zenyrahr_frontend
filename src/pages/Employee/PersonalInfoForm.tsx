@@ -35,7 +35,7 @@ export default function PersonalInfoForm({
         const userData = JSON.parse(storedUserData);
         if (userData?.id) {
           // Fetch personal info using the extracted ID
-          fetch(`${API_BASE_URL}/api/auth/employees/${userData.id}`)
+          fetch(`${API_BASE_URL}/auth/employees/${userData.id}`)
             .then((response) => {
               if (!response.ok) {
                 throw new Error("Failed to fetch personal information.");
