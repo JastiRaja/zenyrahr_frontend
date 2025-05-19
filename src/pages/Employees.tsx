@@ -362,7 +362,7 @@ export default function Employees() {
                   Employee Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employee Code
+                  Employee Id
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Email
@@ -371,7 +371,7 @@ export default function Employees() {
                   Contact No
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Join Date
+                  Join Date (MM/DD/YYYY)
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Designation
@@ -400,7 +400,7 @@ export default function Employees() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{employee.code}</div>
+                    <div className="text-sm text-gray-900">{employee.id}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">

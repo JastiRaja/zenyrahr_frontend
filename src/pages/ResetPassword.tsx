@@ -9,6 +9,8 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const location = useLocation();
   const username = location.state?.email;
+  const isVerified = location.state?.verified;
+  const otp = location.state?.otp;
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
@@ -29,6 +31,17 @@ export default function ResetPassword() {
   // Redirect if no email is provided
   if (!username) {
     navigate("/login");
+    return null;
+  }
+
+  // Only allow access if verified and otp are present
+  useEffect(() => {
+    if (!username || !isVerified || !otp) {
+      navigate("/forgot-password");
+    }
+  }, [username, isVerified, otp, navigate]);
+
+  if (!username || !isVerified || !otp) {
     return null;
   }
 
@@ -75,32 +88,26 @@ export default function ResetPassword() {
 
     setError("");
     setIsLoading(true);
-    // console.log("Username:", username);
-    // console.log("New Password:", formValues.newPassword);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/auth/resetPassword`,
+        `${API_BASE_URL}/auth/verifyPinAndResetPassword`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             username: username,
-            password: formValues.newPassword,
+            pin: otp,
+            newPassword: formValues.newPassword,
           }),
         }
       );
-      const responseData = await response.json(); // Parse the response JSON
-
+      const responseData = await response.json();
       if (!response.ok) {
-        // console.log("Error response:", responseData); // Log the error response from the backend
-        throw new Error("Password reset failed");
+        throw new Error(responseData.ErrorMessage || "Password reset failed");
       }
-
-      // console.log("Success response:", responseData); // Log the success response from the backend
       navigate("/login", {
         state: {
-          message:
-            "Password reset successful. Please login with your new password.",
+          message: "Password reset successful. Please login with your new password.",
         },
       });
     } catch (err) {

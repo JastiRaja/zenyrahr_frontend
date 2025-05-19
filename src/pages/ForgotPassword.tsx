@@ -86,7 +86,7 @@ export default function ForgotPassword() {
         body: JSON.stringify({ username: formValues.email }),
       });
       if (!response.ok) throw new Error("Failed to send OTP. User not found.");
-      navigate("/reset-password", { state: { email: formValues.email } });
+      navigate("/verify-otp", { state: { email: formValues.email } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send OTP.");
       errorMotion.set(1); // Set errorMotion to 1 to trigger sad face

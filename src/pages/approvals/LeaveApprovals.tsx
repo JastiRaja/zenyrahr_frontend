@@ -58,6 +58,40 @@ export default function LeaveApprovals() {
   const [confirmationMessage, setConfirmationMessage] =
     useState<ConfirmationMessage | null>(null);
 
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // console.log("Fetching all leave requests for approvals");
+      const [leaveRequestsResponse, leaveBalancesResponse] =
+        await Promise.all([
+          api.get(`/api/leave-requests`),
+          api.get(`/api/leave-balances`),
+        ]);
+
+      const processedRequests = leaveRequestsResponse.data.map(
+        (request: LeaveRequest) => ({
+          ...request,
+          totalDays:
+            dayjs(request.endDate).diff(dayjs(request.startDate), "day") + 1,
+        })
+      );
+
+      const sortedRequests = processedRequests.sort(
+        (a: LeaveRequest, b: LeaveRequest) => {
+          return dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf();
+        }
+      );
+
+      setLeaveRequests(sortedRequests);
+      setLeaveBalances(leaveBalancesResponse.data);
+    } catch (err) {
+      console.error("❌ Error fetching approval data:", err);
+      setError("Failed to fetch data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!user?.id || (user.role !== "manager" && user.role !== "admin")) {
       setError(
@@ -65,57 +99,9 @@ export default function LeaveApprovals() {
       );
       return;
     }
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // console.log("Fetching all leave requests for approvals");
-        const [leaveRequestsResponse, leaveBalancesResponse] =
-          await Promise.all([
-            api.get(`/api/leave-requests`),
-            api.get(`/api/leave-balances`),
-          ]);
-
-        // console.log(
-        //   "Received leave requests for approval:",
-        //   leaveRequestsResponse.data
-        // );
-
-        const processedRequests = leaveRequestsResponse.data.map(
-          (request: LeaveRequest) => ({
-            ...request,
-            totalDays:
-              dayjs(request.endDate).diff(dayjs(request.startDate), "day") + 1,
-          })
-        );
-
-        // console.log(
-        //   "Processed leave requests for approval:",
-        //   processedRequests
-        // );
-
-        // Sort by createdAt in descending order (most recent first)
-        const sortedRequests = processedRequests.sort(
-          (a: LeaveRequest, b: LeaveRequest) => {
-            return dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf();
-          }
-        );
-
-        setLeaveRequests(sortedRequests);
-        setLeaveBalances(leaveBalancesResponse.data);
-      } catch (err) {
-        console.error("❌ Error fetching approval data:", err);
-        setError("Failed to fetch data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-    // Add refresh interval to periodically check for new leaves
     const interval = setInterval(fetchData, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval); // Cleanup interval on unmount
+    return () => clearInterval(interval);
   }, [user]);
 
   // ✅ Use Effect to Remove Confirmation Message After 3 Seconds
@@ -132,12 +118,9 @@ export default function LeaveApprovals() {
   const handleApprove = async (id: number) => {
     try {
       await api.put(`/api/leave-requests/${id}/approve`);
-
-      // Remove the approved leave from the list
-      setLeaveRequests((prev) => prev.filter((req) => req.id !== id));
+      await fetchData(); // Re-fetch after approval
+      setSelectedRequest(null); // Close the popup
       setConfirmationMessage({ text: "Leave Approved ✅", type: "approve" });
-
-      // Auto-hide confirmation message after 3 seconds
       setTimeout(() => setConfirmationMessage(null), 3000);
     } catch {
       setError(`Failed to approve leave request ${id}.`);
@@ -147,12 +130,9 @@ export default function LeaveApprovals() {
   const handleReject = async (id: number) => {
     try {
       await api.put(`/api/leave-requests/${id}/reject`);
-
-      // Remove the rejected leave from the list
-      setLeaveRequests((prev) => prev.filter((req) => req.id !== id));
+      await fetchData(); // Re-fetch after rejection
+      setSelectedRequest(null); // Close the popup
       setConfirmationMessage({ text: "Leave Rejected ❌", type: "reject" });
-
-      // Auto-hide confirmation message after 3 seconds
       setTimeout(() => setConfirmationMessage(null), 3000);
     } catch {
       setError(`Failed to reject leave request ${id}.`);
