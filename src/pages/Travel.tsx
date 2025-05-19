@@ -597,6 +597,10 @@ export default function Travel() {
                               href={url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e: React.MouseEvent<HTMLAnchorElement>) => {
+                                e.preventDefault();
+                                window.open(url, '_blank');
+                              }}
                               className="text-indigo-600 hover:text-indigo-900"
                             >
                               {`Document ${selectedTrip.documents?.length || 0 + index + 1}`}
@@ -755,6 +759,7 @@ export default function Travel() {
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
+                          download
                           className="block text-indigo-600 hover:text-indigo-800"
                         >
                           Document {index + 1}

@@ -120,7 +120,7 @@ export default function Timesheet() {
     const fetchTimesheets = async () => {
       try {
         const response = await axios.get(
-          `${API_BASE_URL}/api/timesheets/employee/${user.id}`
+          `${API_BASE_URL}/api/timesheet/employee/${user.id}`
         );
 
         // Ensure response.data is an array
@@ -133,19 +133,26 @@ export default function Timesheet() {
 
         setAllEntries(processedTimesheets);
 
-        // Set initial date range to the latest week
-        const latestDate: dayjs.Dayjs = processedTimesheets.reduce(
-          (latest: dayjs.Dayjs, entry: TimesheetEntry) => {
-            const entryDate: dayjs.Dayjs = dayjs(entry.date);
-            return entryDate.isAfter(latest) ? entryDate : latest;
-          },
-          dayjs(processedTimesheets[0].date)
-        );
+        // Set initial date range to the latest week only if there are timesheets
+        if (processedTimesheets.length > 0) {
+          const latestDate: dayjs.Dayjs = processedTimesheets.reduce(
+            (latest: dayjs.Dayjs, entry: TimesheetEntry) => {
+              const entryDate: dayjs.Dayjs = dayjs(entry.date);
+              return entryDate.isAfter(latest) ? entryDate : latest;
+            },
+            dayjs(processedTimesheets[0].date)
+          );
 
-        const startOfWeek = latestDate.startOf("isoWeek").toDate();
-        const endOfWeek = latestDate.startOf("isoWeek").add(4, "day").toDate();
-        setStartDate(startOfWeek);
-        setEndDate(endOfWeek);
+          const startOfWeek = latestDate.startOf("isoWeek").toDate();
+          const endOfWeek = latestDate.startOf("isoWeek").add(4, "day").toDate();
+          setStartDate(startOfWeek);
+          setEndDate(endOfWeek);
+        } else {
+          // If no timesheets, set to current week
+          const today = dayjs();
+          setStartDate(today.startOf("isoWeek").toDate());
+          setEndDate(today.startOf("isoWeek").add(4, "day").toDate());
+        }
       } catch (err) {
         console.error("Error fetching timesheets:", err);
         setError("Failed to fetch timesheets.");

@@ -102,6 +102,9 @@ export default function NewTripRequest() {
         formDataToSend.append("files", new Blob([], { type: 'application/octet-stream' }));
       }
 
+      // Append the allowed category for backend
+      formDataToSend.append('category', 'travel_requests');
+
       const response = await fetch(`${API_BASE_URL}/api/travel-requests`, {
         method: "POST",
         body: formDataToSend,

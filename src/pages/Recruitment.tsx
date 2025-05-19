@@ -36,7 +36,7 @@ export default function Recruitment() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/recruitment-details');
+      const response = await api.get('/api/recruitment-details');
       setJobs(response.data);
       setError(null);
     } catch (err) {

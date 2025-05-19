@@ -49,6 +49,7 @@ import JobDetails from './pages/JobDetails';
 import RecruitmentJobDetails from './pages/recruitment/JobDetails';
 import JobOpenings from './pages/JobOpenings';
 import ReferralRequests from './pages/recruitment/ReferralRequests';
+import VerifyOTP from "./pages/VerifyOTP";
 
 export default function App() {
   return (
@@ -61,6 +62,7 @@ export default function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/verify-otp" element={<VerifyOTP />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* Protected Routes */}

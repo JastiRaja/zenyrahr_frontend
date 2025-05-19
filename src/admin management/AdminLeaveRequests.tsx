@@ -124,13 +124,11 @@ export default function AdminLeaveRequests() {
   };
 
   const filteredRequests = leaveRequests.filter((request) => {
+    const firstName = request.employee?.firstName || "";
+    const lastName = request.employee?.lastName || "";
     const matchesSearch =
-      request.employee.firstName
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      request.employee.lastName
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lastName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       filterStatus === "all" ||
       request.status.toLowerCase() === filterStatus.toLowerCase();
@@ -199,10 +197,10 @@ export default function AdminLeaveRequests() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {request.employee.firstName} {request.employee.lastName}
+                      {request.employee?.firstName || ""} {request.employee?.lastName || ""}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {request.leaveType.name} - {request.totalDays} days
+                      {request.leaveType?.name || "Unknown Leave Type"} - {request.totalDays} days
                     </p>
                     <div className="flex items-center mt-2 text-sm text-gray-500">
                       <Calendar className="h-4 w-4 mr-1" />
@@ -267,11 +265,10 @@ export default function AdminLeaveRequests() {
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {selectedRequest.employee.firstName}{" "}
-                  {selectedRequest.employee.lastName}
+                  {selectedRequest.employee?.firstName || ""} {selectedRequest.employee?.lastName || ""}
                 </h3>
                 <p className="text-sm text-gray-500">
-                  {selectedRequest.leaveType.name} - {selectedRequest.totalDays}{" "}
+                  {selectedRequest.leaveType?.name || "Unknown Leave Type"} - {selectedRequest.totalDays}{" "}
                   days
                 </p>
               </div>

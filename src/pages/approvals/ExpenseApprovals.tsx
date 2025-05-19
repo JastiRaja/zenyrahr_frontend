@@ -701,13 +701,22 @@ export default function ExpenseApprovals() {
                   </ul>
                 </div>
               )}
-              {(selectedRequest.documentUrls && selectedRequest.documentUrls.length > 0) && (
+              {selectedRequest.documentUrls && selectedRequest.documentUrls.length > 0 && (
                 <div>
                   <b>Documents:</b>
                   <ul>
                     {selectedRequest.documentUrls.map((url: string, idx: number) => (
                       <li key={idx}>
-                        <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            window.open(url, '_blank');
+                          }}
+                          className="text-blue-600 hover:underline"
+                        >
                           {`Document ${idx + 1}`}
                         </a>
                       </li>
