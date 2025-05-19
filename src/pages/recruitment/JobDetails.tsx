@@ -78,7 +78,7 @@ export default function JobDetails() {
   const fetchJobDetails = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/recruitment-details/${id}`);
+      const response = await api.get(`/api/recruitment-details/${id}`);
       setJob(response.data);
       setReferralForm(prev => ({ ...prev, recruitment: response.data }));
       setError(null);
@@ -139,7 +139,7 @@ export default function JobDetails() {
     try {
       if (!job?.id) return;
 
-      const response = await api.patch(`/recruitment-details/${job.id}/status`, {
+      const response = await api.patch(`/api/recruitment-details/${job.id}/status`, {
         status: selectedStatus
       });
 

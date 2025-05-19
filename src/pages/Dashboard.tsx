@@ -192,8 +192,8 @@ export default function Dashboard() {
       // Fetch all required data in parallel, including recruitment details
       const [employeesResponse, leaveRequestsResponse, recruitmentResponse] = await Promise.all([
         api.get(`auth/employees`),
-        api.get(`/leave-requests`),
-        api.get(`/recruitment-details`),
+        api.get(`/api/leave-requests`),
+        api.get(`/api/recruitment-details`),
       ]);
 
       // Calculate total employees and growth
@@ -281,7 +281,7 @@ export default function Dashboard() {
         api.get(`/auth/employees`),
         api.get(`/api/leave-requests`),
         api.get(`/api/timesheet`),
-        api.get(`/recruitment-details`),
+        api.get(`/api/recruitment-details`),
       ]);
 
       const activities: Activity[] = [];

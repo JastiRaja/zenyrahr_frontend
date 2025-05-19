@@ -34,7 +34,7 @@ export default function PostJob() {
     e.preventDefault();
     try {
       setSubmitting(true);
-      const response = await api.post('/recruitment-details', formData);
+      const response = await api.post('/api/recruitment-details', formData);
       navigate('/recruitment');
     } catch (error) {
       console.error('Error posting job:', error);
