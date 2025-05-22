@@ -46,9 +46,9 @@ export default function LeaveSummary({ hideSecondRow }: LeaveSummaryProps) {
 
         setLeaveTypes(leaveTypesData);
 
-        const userBalances = leaveBalancesData.filter(
+        const userBalances = Array.isArray(leaveBalancesData) ? leaveBalancesData.filter(
           (balance: LeaveBalance) => balance.employeeId === Number(user.id)
-        );
+        ) : [];
 
         const balances: { [key: string]: number } = {};
 
@@ -77,7 +77,7 @@ export default function LeaveSummary({ hideSecondRow }: LeaveSummaryProps) {
       {error && (
         <p className="text-red-600 bg-red-100 p-4 rounded-md">{error}</p>
       )}
-      {leaveTypes.map((type) => {
+      {Array.isArray(leaveTypes) && leaveTypes.map((type) => {
         const currentBalance = leaveBalances[type.name] || 0;
         const usedBalance = Math.max(0, type.defaultBalance - currentBalance); // Ensure used balance is not negative
 

@@ -37,7 +37,7 @@ export default function JobOpenings() {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/job-openings`);
+      const response = await api.get(`/api/recruitment-details`);
       // Only show OPEN jobs for employees
       const openJobs = response.data.filter((job: JobPosting) => job.status === 'OPEN');
       setJobs(openJobs);

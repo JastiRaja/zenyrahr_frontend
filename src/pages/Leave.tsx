@@ -75,7 +75,7 @@ export default function Leave() {
         // Ensure response.data is an array
         const leaveData = Array.isArray(response.data) ? response.data : [];
         
-        const processedRequests = leaveData.map(
+        const processedRequests = Array.isArray(leaveData) ? leaveData.map(
           (request: LeaveRequest) => ({
             ...request,
             totalDays:
@@ -87,7 +87,7 @@ export default function Leave() {
                 ? reportingManager
                 : null,
           })
-        );
+        ) : [];
 
         // Sort requests by createdAt in descending order (most recent first)
         const sortedRequests = processedRequests.sort(
@@ -131,10 +131,10 @@ export default function Leave() {
     }
   };
 
-  const filteredRequests = leaveRequests.filter((request) => {
+  const filteredRequests = Array.isArray(leaveRequests) ? leaveRequests.filter((request) => {
     if (filterStatus === "all") return true;
     return request.status.toLowerCase() === filterStatus.toLowerCase();
-  });
+  }) : [];
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -246,28 +246,25 @@ export default function Leave() {
             </p>
 
             {/* ✅ Uploaded Files */}
-            {selectedRequest.documentUrls &&
-              selectedRequest.documentUrls.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-md font-semibold">Uploaded Documents:</h4>
-                  <ul className="mt-2">
-                    {selectedRequest.documentUrls.map((fileUrl, index) => (
-                      <li key={index}>
-                        <a
-                          href={fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline"
-                        >
-                          {decodeURIComponent(
-                            fileUrl.split("/").pop() || `Document ${index + 1}`
-                          )}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            {Array.isArray(selectedRequest?.documentUrls) && selectedRequest.documentUrls.map((fileUrl, index) => (
+              <div key={index} className="mt-4">
+                <h4 className="text-md font-semibold">Uploaded Documents:</h4>
+                <ul className="mt-2">
+                  <li>
+                    <a
+                      href={fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {decodeURIComponent(
+                        fileUrl.split("/").pop() || `Document ${index + 1}`
+                      )}
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            ))}
 
             {/* ✅ Withdraw Button */}
             {selectedRequest.status === "PENDING" && (

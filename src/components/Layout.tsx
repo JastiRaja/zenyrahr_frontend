@@ -20,7 +20,6 @@ import {
   Bell,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import NotificationCenter from "./NotificationCenter";
 import Settings from "./Settings";
 import logo from "../assets/image.png";
 import axios from "axios";
@@ -29,39 +28,40 @@ import dayjs from "dayjs";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
 const getNavigation = (
-  hasPermission: (action: string, subject: string) => boolean
+  hasPermission: (action: string, subject: string) => boolean,
+  user: any
 ) => [
-  { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Dashboard", href: "/dashboard", icon: Home, show: () => true },
   {
     name: "Employee Management",
     href: "/employees",
     icon: Users,
     show: () => hasPermission("read", "employees"),
   },
-  { name: "Self Service", href: "/self-service", icon: UserCircle },
+  { name: "Self Service", href: "/self-service", icon: UserCircle, show: () => true },
   {
     name: "Job Openings",
     href: "/job-openings",
     icon: UserPlus,
-    show: () => !hasPermission("read", "employees"), // Show for regular employees
+    show: () => !hasPermission("read", "employees"),
   },
   {
     name: "Recruitment",
     href: "/recruitment",
     icon: UserPlus,
-    show: () => hasPermission("read", "employees"), // Show for HR/managers
+    show: () => hasPermission("read", "employees"),
     submenu: [
-      { name: "Job Postings", href: "/recruitment" },
-      { name: "Referral Requests", href: "/recruitment/referrals" },
+      { name: "Job Postings", href: "/recruitment", show: () => true },
+      { name: "Referral Requests", href: "/recruitment/referrals", show: () => true },
     ],
   },
-
   {
     name: "Time & Attendance",
     href: "/timesheet",
     icon: Clock,
+    show: () => true,
     submenu: [
-      { name: "My Timesheet", href: "/timesheet" },
+      { name: "My Timesheet", href: "/timesheet", show: () => true },
       {
         name: "Submit Time",
         href: "/timesheet/submit",
@@ -78,8 +78,9 @@ const getNavigation = (
     name: "Leave Management",
     href: "/leave",
     icon: Calendar,
+    show: () => true,
     submenu: [
-      { name: "My Leave", href: "/leave" },
+      { name: "My Leave", href: "/leave", show: () => true },
       {
         name: "Request Leave",
         href: "/leave/request",
@@ -88,31 +89,25 @@ const getNavigation = (
       {
         name: "Approvals",
         href: "/leave/approvals",
-        show: () => hasPermission("approve", "leave") && hasPermission("manage", "employees"),
+        show: () => user?.role?.toLowerCase() === 'hr',
       },
     ],
   },
-
-  // {
-  //   name: "HR Analytics",
-  //   href: "/analytics",
-  //   icon: BarChart3,
-  //   show: () => hasPermission("read", "analytics"),
-  // },
-  // {
-  //   name: "Performance",
-  //   href: "/performance",
-  //   icon: Target,
-  //   show: () => hasPermission("manage", "performance"),
-  // },
+  {
+    name: "Payroll",
+    href: "/payroll",
+    icon: DollarSign,
+    show: () => true,
+  },
   {
     name: "Travel & Expense",
     href: "/travel",
     icon: Plane,
+    show: () => true,
     submenu: [
-      { name: "Overview", href: "/travel" },
-      { name: "New Trip", href: "/travel/new-trip" },
-      { name: "Submit Expense", href: "/travel/submit-expense" },
+      { name: "Overview", href: "/travel", show: () => true },
+      { name: "New Trip", href: "/travel/new-trip", show: () => true },
+      { name: "Submit Expense", href: "/travel/submit-expense", show: () => true },
       {
         name: "Approvals",
         href: "/travel/approvals",
@@ -120,14 +115,11 @@ const getNavigation = (
       },
     ],
   },
-  // { name: "Wellness", href: "/wellness", icon: Heart },
-
-  // NEW: Admin Leave Management Section
   {
     name: "Admin",
     href: "/admin-leave",
     icon: Calendar,
-    show: () => hasPermission("manage", "admin-leave"), // Only show to admins
+    show: () => hasPermission("manage", "admin-leave"),
     submenu: [
       {
         name: "Service Requests",
@@ -144,24 +136,16 @@ const getNavigation = (
         href: "/admin-leave/balance",
         show: () => hasPermission("manage", "leave-balance"),
       },
-      // {
-      //   name: "Leave Policies",
-      //   href: "/admin-leave/policies",
-      //   show: () => hasPermission("manage", "leave-policies"),
-      // },
       {
-        name: "Leave Types Management", // ✅ New Leave Types Page
+        name: "Leave Types Management",
         href: "/admin-leave/types",
         show: () => hasPermission("manage", "leave-types"),
       },
-
-      // ✅ Assign Manager Feature
       {
         name: "Assign Manager",
         href: "/admin/assign-manager",
         show: () => hasPermission("manage", "employees"),
       },
-
       {
         name: "Manange Entities",
         href: "/admin/manage-entities",
@@ -175,6 +159,12 @@ const getNavigation = (
       },
     ],
   },
+  // {
+  //   name: "Holiday Management",
+  //   href: "/admin/holidays",
+  //   icon: Calendar,
+  //   show: () => hasPermission("manage", "employees"),
+  // },
 ];
 
 export default function Layout() {
@@ -183,70 +173,70 @@ export default function Layout() {
   const { user, logout, hasPermission } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
+  // const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  // const [notificationCount, setNotificationCount] = useState(0);
 
-  const navigation = getNavigation(hasPermission);
+  const navigation = getNavigation(hasPermission, user);
 
-  const fetchNotificationCount = async () => {
-    if (!user?.id) return;
+  // const fetchNotificationCount = async () => {
+  //   if (!user?.id) return;
     
-    try {
-      const endpoints = [
-        // User's own requests
-        axios.get(`${API_BASE_URL}/api/leave-requests/employee/${user.id}`),
-        axios.get(`${API_BASE_URL}/api/travel-requests/employee/${user.id}`),
-        axios.get(`${API_BASE_URL}/api/expenses/employee/${user.id}`),
-        axios.get(`${API_BASE_URL}/api/timesheet/employee/${user.id}`)
-      ];
+  //   try {
+  //     const endpoints = [
+  //       // User's own requests
+  //       axios.get(`${API_BASE_URL}/api/leave-requests/employee/${user.id}`),
+  //       axios.get(`${API_BASE_URL}/api/travel-requests/employee/${user.id}`),
+  //       axios.get(`${API_BASE_URL}/api/expenses/employee/${user.id}`),
+  //       axios.get(`${API_BASE_URL}/api/timesheet/employee/${user.id}`)
+  //     ];
 
-      // Add approval requests if user has permission
-      if (hasPermission('approve', 'leave')) {
-        endpoints.push(axios.get(`${API_BASE_URL}/api/leave-requests`));
-      }
-      if (hasPermission('approve', 'travel') || hasPermission('approve', 'expenses')) {
-        endpoints.push(axios.get(`${API_BASE_URL}/api/travel-requests`));
-        endpoints.push(axios.get(`${API_BASE_URL}/api/expenses`));
-      }
-      if (hasPermission('approve', 'timesheet')) {
-        endpoints.push(axios.get(`${API_BASE_URL}/api/timesheet`));
-      }
+  //     // Add approval requests if user has permission
+  //     if (hasPermission('approve', 'leave')) {
+  //       endpoints.push(axios.get(`${API_BASE_URL}/api/leave-requests`));
+  //     }
+  //     if (hasPermission('approve', 'travel') || hasPermission('approve', 'expenses')) {
+  //       endpoints.push(axios.get(`${API_BASE_URL}/api/travel-requests`));
+  //       endpoints.push(axios.get(`${API_BASE_URL}/api/expenses`));
+  //     }
+  //     if (hasPermission('approve', 'timesheet')) {
+  //       endpoints.push(axios.get(`${API_BASE_URL}/api/timesheet`));
+  //     }
 
-      // Add referral notifications for HR and admin
-      if (hasPermission('read', 'employees')) {
-        endpoints.push(axios.get(`${API_BASE_URL}/api/referrals`));
-      }
+  //     // Add referral notifications for HR and admin
+  //     if (hasPermission('read', 'employees')) {
+  //       endpoints.push(axios.get(`${API_BASE_URL}/api/referrals`));
+  //     }
 
-      const responses = await Promise.all(
-        endpoints.map(p => p.catch(error => {
-          console.error('Error fetching notifications:', error);
-          return { data: [] };
-        }))
-      );
+  //     const responses = await Promise.all(
+  //       endpoints.map(p => p.catch(error => {
+  //         console.error('Error fetching notifications:', error);
+  //         return { data: [] };
+  //       }))
+  //     );
       
-      const totalCount = responses.reduce((count, response) => {
-        const items = response.data || [];
-        if (!Array.isArray(items)) return count;
+  //     const totalCount = responses.reduce((count, response) => {
+  //       const items = response.data || [];
+  //       if (!Array.isArray(items)) return count;
         
-        return count + items.filter(item => 
-          item && 
-          dayjs(item.createdAt).isAfter(dayjs().subtract(7, 'day')) &&
-          (item.status === 'PENDING' || !item.isRead)
-        ).length;
-      }, 0);
+  //       return count + items.filter(item => 
+  //         item && 
+  //         dayjs(item.createdAt).isAfter(dayjs().subtract(7, 'day')) &&
+  //         (item.status === 'PENDING' || !item.isRead)
+  //       ).length;
+  //     }, 0);
 
-      setNotificationCount(totalCount);
-    } catch (error) {
-      console.error('Error fetching notification count:', error);
-    }
-  };
+  //     setNotificationCount(totalCount);
+  //   } catch (error) {
+  //     console.error('Error fetching notification count:', error);
+  //   }
+  // };
 
-  useEffect(() => {
-    fetchNotificationCount();
-    // Set up polling every 5 minutes
-    const interval = setInterval(fetchNotificationCount, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [user?.id]);
+  // useEffect(() => {
+  //   fetchNotificationCount();
+  //   // Set up polling every 5 minutes
+  //   const interval = setInterval(fetchNotificationCount, 5 * 60 * 1000);
+  //   return () => clearInterval(interval);
+  // }, [user?.id]);
 
   const handleLogout = () => {
     logout();
@@ -408,7 +398,7 @@ export default function Layout() {
                 {/* Right side buttons */}
                 <div className="flex items-center gap-4">
                   {/* Notification Bell */}
-                  <button
+                  {/* <button
                     onClick={() => setIsNotificationOpen(true)}
                     className="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none"
                   >
@@ -418,7 +408,7 @@ export default function Layout() {
                         {notificationCount}
                       </span>
                     )}
-                  </button>
+                  </button> */}
 
                   {/* User dropdown */}
                   <div className="flex items-center">
@@ -445,13 +435,6 @@ export default function Layout() {
           </main>
         </div>
       </div>
-
-      {/* Notification Center */}
-      <NotificationCenter
-        isOpen={isNotificationOpen}
-        onClose={() => setIsNotificationOpen(false)}
-        setNotificationCount={setNotificationCount}
-      />
     </div>
   );
 }

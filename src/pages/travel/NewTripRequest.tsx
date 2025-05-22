@@ -30,8 +30,6 @@ export default function NewTripRequest() {
     documents: [] as File[], // Track multiple files
   });
 
-  const [notification, setNotification] = useState<string | null>(null);
-
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -64,8 +62,6 @@ export default function NewTripRequest() {
     e.preventDefault();
 
     if (!isAuthenticated || !user) {
-      setNotification("User not authenticated. Please log in again.");
-      setTimeout(() => setNotification(null), 3000);
       return;
     }
 
@@ -87,19 +83,17 @@ export default function NewTripRequest() {
         secondLevelApprovalStatus: "PENDING"
       };
 
-      formDataToSend.append(
-        "travelRequest",
-        JSON.stringify(travelRequestPayload)
-      );
+      // Create a Blob with the correct MIME type
+      const jsonBlob = new Blob([JSON.stringify(travelRequestPayload)], {
+        type: 'application/json'
+      });
+      formDataToSend.append("travelRequest", jsonBlob);
 
       // Only append files if they exist
       if (formData.documents && formData.documents.length > 0) {
-      formData.documents.forEach((file) => {
-        formDataToSend.append("files", file);
-      });
-      } else {
-        // Append an empty file array if no files are selected
-        formDataToSend.append("files", new Blob([], { type: 'application/octet-stream' }));
+        formData.documents.forEach((file) => {
+          formDataToSend.append("files", file);
+        });
       }
 
       // Append the allowed category for backend
@@ -108,20 +102,44 @@ export default function NewTripRequest() {
       const response = await fetch(`${API_BASE_URL}/api/travel-requests`, {
         method: "POST",
         body: formDataToSend,
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          // Don't set Content-Type header - let the browser set it with the boundary
+        }
       });
 
+      // Handle different response types
+      const contentType = response.headers.get("content-type");
+      let errorMessage = "Failed to submit request";
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to submit request");
+        if (contentType && contentType.includes("application/json")) {
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorData.message || "Failed to submit request";
+          } catch (e) {
+            errorMessage = `Server error: ${response.status}`;
+          }
+        } else {
+          errorMessage = `Server error: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
-      setNotification("Successfully submitted");
-      setTimeout(() => setNotification(null), 3000);
+      // Handle successful response
+      let result;
+      try {
+        result = await response.json();
+      } catch (e) {
+        console.warn("Response was not JSON:", e);
+        // If response is not JSON but request was successful, we can still proceed
+        result = { success: true };
+      }
+
       navigate("/travel");
     } catch (error) {
       console.error("Error submitting form:", error);
-      setNotification(error instanceof Error ? error.message : "Submission failed");
-      setTimeout(() => setNotification(null), 3000);
     }
   };
 
@@ -137,9 +155,6 @@ export default function NewTripRequest() {
       accommodation: "",
       documents: [],
     });
-    setNotification("Submission canceled");
-    setTimeout(() => setNotification(null), 3000); // Notification disappears after 3 seconds
-
     navigate("/travel");
   };
 
@@ -151,24 +166,6 @@ export default function NewTripRequest() {
           Submit a new business travel request
         </p>
       </div>
-
-      {/* Notification Section */}
-      {notification && (
-        <div
-          className={`mb-4 p-4 rounded-md flex items-center ${
-            notification.includes("Successfully")
-              ? "bg-green-50 text-green-700"
-              : "bg-red-50 text-red-700"
-          }`}
-        >
-          {notification.includes("Successfully") ? (
-            <CheckCircle className="h-6 w-6 mr-2" />
-          ) : (
-            <XCircle className="h-6 w-6 mr-2" />
-          )}
-          <span>{notification}</span>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Basic Trip Information */}
