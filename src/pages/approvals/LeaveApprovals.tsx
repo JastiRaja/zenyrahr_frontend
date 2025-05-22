@@ -93,9 +93,9 @@ export default function LeaveApprovals() {
   };
 
   useEffect(() => {
-    if (!user?.id || (user.role !== "manager" && user.role !== "admin")) {
+    if (!user?.id || user.role?.toLowerCase() !== "hr") {
       setError(
-        "Unauthorized access. Only managers or admins can view this page."
+        "Unauthorized access. Only HR can view this page."
       );
       return;
     }

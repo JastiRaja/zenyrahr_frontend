@@ -26,9 +26,11 @@ import {
   Line,
 } from "recharts";
 import api from "../api/axios";
+import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { getAllEmployees } from '../api/payroll';
 
 dayjs.extend(relativeTime);
 
@@ -53,19 +55,20 @@ interface DashboardStats {
   positionTrend: number;
 }
 
-interface ChartData {
-  month: string;
-  attendance: number;
-  target: number;
-  revenue: number;
-}
-
 interface EmployeeStats {
   leaveBalance: number;
   attendanceRate: number;
   pendingRequests: number;
   upcomingLeaves: number;
 }
+
+type AttendanceStats = {
+  month: string;
+  presentCount: number;
+  absentCount: number;
+  halfDayCount: number;
+  total: number;
+};
 
 export default function Dashboard() {
   const { user, hasPermission } = useAuth();
@@ -87,8 +90,20 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+  const [attendanceStats, setAttendanceStats] = useState<AttendanceStats[]>([]);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [period, setPeriod] = useState('monthly');
+  const [department, setDepartment] = useState('');
+  const [departments, setDepartments] = useState<string[]>([]);
+
+  useEffect(() => {
+    getAllEmployees().then(emps => {
+      const uniqueDeps = Array.from(new Set(emps.map(e => e.department).filter(Boolean)));
+      setDepartments(uniqueDeps);
+    });
+  }, []);
 
   useEffect(() => {
     if (hasPermission("manage", "employees")) {
@@ -97,6 +112,10 @@ export default function Dashboard() {
       fetchEmployeeDashboardData();
     }
     fetchRecentActivities();
+    getAttendanceStats()
+      .then(data => setAttendanceStats(data))
+      .catch(() => setAttendanceStats([]))
+      .finally(() => setLoadingStats(false));
     // Set up polling for real-time updates every 30 seconds
     const interval = setInterval(() => {
       if (hasPermission("manage", "employees")) {
@@ -105,9 +124,12 @@ export default function Dashboard() {
         fetchEmployeeDashboardData();
       }
       fetchRecentActivities();
+      getAttendanceStats()
+        .then(data => setAttendanceStats(data))
+        .catch(() => setAttendanceStats([]));
     }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [period, department]);
 
   const fetchEmployeeDashboardData = async () => {
     if (!user?.id) return;
@@ -191,9 +213,9 @@ export default function Dashboard() {
 
       // Fetch all required data in parallel, including recruitment details
       const [employeesResponse, leaveRequestsResponse, recruitmentResponse] = await Promise.all([
-        api.get(`auth/employees`),
-        api.get(`/api/leave-requests`),
-        api.get(`/api/recruitment-details`),
+        axios.get(`${API_BASE_URL}/auth/employees`),
+        axios.get(`${API_BASE_URL}/api/leave-requests`),
+        axios.get(`${API_BASE_URL}/api/recruitment-details`),
       ]);
 
       // Calculate total employees and growth
@@ -367,6 +389,11 @@ export default function Dashboard() {
     }
   };
 
+  // Calculate real-time average attendance from attendanceStats
+  const totalPresent = attendanceStats.reduce((sum, stat) => sum + stat.presentCount, 0);
+  const totalRecords = attendanceStats.reduce((sum, stat) => sum + stat.total, 0);
+  const averageAttendance = totalRecords ? (totalPresent / totalRecords) * 100 : 0;
+
   const dashboardStats = [
     {
       name: "Total Employees",
@@ -377,7 +404,7 @@ export default function Dashboard() {
     },
     {
       name: "Average Attendance",
-      stat: `${stats.averageAttendance}%`,
+      stat: `${averageAttendance.toFixed(1)}%`,
       icon: Clock,
       change: `${stats.attendanceTrend}%`,
       changeType: stats.attendanceTrend >= 0 ? "increase" : "decrease",
@@ -478,6 +505,22 @@ export default function Dashboard() {
     },
   ];
 
+  const getAttendanceStats = async () => {
+    // console.log("Fetching attendance stats with filters...", period, department);
+    const response = await api.get('/api/payroll/attendance/stats', {
+      params: { period, department }
+    });
+    return response.data;
+  };
+
+  // Prepare data for chart
+  const attendanceData = attendanceStats.map(stat => ({
+    period: stat.month,
+    present: stat.total ? (stat.presentCount / stat.total) * 100 : 0,
+    absent: stat.total ? (stat.absentCount / stat.total) * 100 : 0,
+    halfDay: stat.total ? (stat.halfDayCount / stat.total) * 100 : 0,
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -497,9 +540,9 @@ export default function Dashboard() {
             <Bell className="h-4 w-4 mr-2" />
             Notifications
           </button> */}
-          {hasPermission("manage", "employees") && (
+          {/* {hasPermission("manage", "employees") && (
             <button className="btn-primary">View Reports</button>
-          )}
+          )} */}
         </div>
       </div>
 
@@ -591,15 +634,28 @@ export default function Dashboard() {
               ? "Team Attendance Performance"
               : "Your Attendance Performance"}
           </h2>
+          <div className="flex gap-4 mb-4">
+            <select value={period} onChange={e => setPeriod(e.target.value)} className="border rounded px-2 py-1">
+              <option value="monthly">Monthly</option>
+              <option value="weekly">Weekly</option>
+            </select>
+            <select value={department} onChange={e => setDepartment(e.target.value)} className="border rounded px-2 py-1">
+              <option value="">All Departments</option>
+              {departments.map(dep => (
+                <option key={dep} value={dep}>{dep}</option>
+              ))}
+            </select>
+          </div>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
+              <BarChart data={attendanceData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="attendance" fill="#8b5cf6" />
-                <Bar dataKey="target" fill="#c084fc" />
+                <XAxis dataKey="period" />
+                <YAxis domain={[0, 100]} tickFormatter={tick => `${tick}%`} />
+                <Tooltip formatter={value => typeof value === 'number' ? value.toFixed(1) + '%' : value} />
+                <Bar dataKey="present" fill="#8b5cf6" name="Present" />
+                <Bar dataKey="absent" fill="#f87171" name="Absent" />
+                <Bar dataKey="halfDay" fill="#fbbf24" name="Half Day" />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -39,26 +39,30 @@ interface JobPosting {
 
 interface ReferralForm {
   candidateName: string;
-  candidateEmail: string;
-  candidatePhone: string;
-  resumeLink: string;
-  coverLetter: string;
+  email: string;
+  mobile: string;
+  referredEmployeeId: number;
+  referredEmployeeName: string;
+  employeeDepartment: string;
+  recruitment: any;
 }
 
 export default function JobDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const [job, setJob] = useState<JobPosting | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReferralForm, setShowReferralForm] = useState(false);
   const [referralForm, setReferralForm] = useState<ReferralForm>({
     candidateName: '',
-    candidateEmail: '',
-    candidatePhone: '',
-    resumeLink: '',
-    coverLetter: '',
+    email: '',
+    mobile: '',
+    referredEmployeeId: user?.id ? parseInt(user.id) : 0,
+    referredEmployeeName: user ? `${user.firstName} ${user.lastName}` : '',
+    employeeDepartment: user?.department || '',
+    recruitment: null
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -70,6 +74,17 @@ export default function JobDetails() {
     fetchJobDetails();
   }, [id]);
 
+  useEffect(() => {
+    if (user) {
+      setReferralForm(prev => ({
+        ...prev,
+        referredEmployeeId: user.id ? parseInt(user.id) : 0,
+        referredEmployeeName: `${user.firstName} ${user.lastName}`,
+        employeeDepartment: user?.department || ''
+      }));
+    }
+  }, [user]);
+
   const fetchJobDetails = async () => {
     try {
       setLoading(true);
@@ -79,6 +94,7 @@ export default function JobDetails() {
         return;
       }
       setJob(response.data);
+      setReferralForm(prev => ({ ...prev, recruitment: response.data }));
       setError(null);
     } catch (err) {
       setError('Failed to fetch job details');
@@ -109,19 +125,24 @@ export default function JobDetails() {
     e.preventDefault();
     try {
       setSubmitting(true);
-      await axios.post(`${API_BASE_URL}/api/referrals`, {
-        jobId: id,
-        ...referralForm
-      });
+      const referralPayload = {
+        ...referralForm,
+        referredEmployeeId: user?.id ? parseInt(user.id) : 0,
+        referredEmployeeName: user ? `${user.firstName} ${user.lastName}` : '',
+        employeeDepartment: user?.department || '',
+        recruitment: job ? { id: job.id } : null
+      };
+      await axios.post(`${API_BASE_URL}/api/referrals`, referralPayload);
       setSubmitSuccess(true);
       setShowReferralForm(false);
-      // Reset form
       setReferralForm({
         candidateName: '',
-        candidateEmail: '',
-        candidatePhone: '',
-        resumeLink: '',
-        coverLetter: '',
+        email: '',
+        mobile: '',
+        referredEmployeeId: user?.id ? parseInt(user.id) : 0,
+        referredEmployeeName: user ? `${user.firstName} ${user.lastName}` : '',
+        employeeDepartment: user?.department || '',
+        recruitment: job ? { id: job.id } : null
       });
     } catch (err) {
       setError('Failed to submit referral');
@@ -250,12 +271,12 @@ export default function JobDetails() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Candidate Email
+                    Email
                   </label>
                   <input
                     type="email"
-                    name="candidateEmail"
-                    value={referralForm.candidateEmail}
+                    name="email"
+                    value={referralForm.email}
                     onChange={handleInputChange}
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -264,12 +285,12 @@ export default function JobDetails() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Candidate Phone
+                    Mobile
                   </label>
                   <input
                     type="tel"
-                    name="candidatePhone"
-                    value={referralForm.candidatePhone}
+                    name="mobile"
+                    value={referralForm.mobile}
                     onChange={handleInputChange}
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -278,12 +299,12 @@ export default function JobDetails() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Resume Link
+                    Referred Employee ID
                   </label>
                   <input
-                    type="url"
-                    name="resumeLink"
-                    value={referralForm.resumeLink}
+                    type="text"
+                    name="referredEmployeeId"
+                    value={referralForm.referredEmployeeId.toString()}
                     onChange={handleInputChange}
                     required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -292,13 +313,28 @@ export default function JobDetails() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Cover Letter
+                    Referred Employee Name
                   </label>
-                  <textarea
-                    name="coverLetter"
-                    value={referralForm.coverLetter}
+                  <input
+                    type="text"
+                    name="referredEmployeeName"
+                    value={referralForm.referredEmployeeName}
                     onChange={handleInputChange}
-                    rows={4}
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Employee Department
+                  </label>
+                  <input
+                    type="text"
+                    name="employeeDepartment"
+                    value={referralForm.employeeDepartment}
+                    onChange={handleInputChange}
+                    required
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                   />
                 </div>

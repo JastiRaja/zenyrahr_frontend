@@ -187,7 +187,7 @@ export default function ExpenseApprovals() {
 
     try {
       const approverName = getApproverName();
-      const response = await api.put(
+      const response: any = await api.put(
         `/api/expenses/${id}/approve-first-level`,
         null,
         {
@@ -236,7 +236,7 @@ export default function ExpenseApprovals() {
 
     try {
       const approverName = getApproverName();
-      const response = await api.put(
+      const response: any = await api.put(
         `/api/expenses/${id}/reject-first-level`,
         null,
         {
@@ -272,7 +272,21 @@ export default function ExpenseApprovals() {
     }
   };
 
-  // Approve/Reject handlers for modal
+  // Add helpers to determine if user can approve/reject at each level
+  const canApproveFirstLevel = (item: Expense | TravelRequest) => {
+    if (!user) return false;
+    const role = user.role?.toLowerCase();
+    // Only manager can approve first level
+    return role === 'manager' && item.firstLevelApprovalStatus?.toLowerCase() === 'pending';
+  };
+  const canApproveSecondLevel = (item: Expense | TravelRequest) => {
+    if (!user) return false;
+    const role = user.role?.toLowerCase();
+    // Only admin or HR can approve second level
+    return (role === 'admin' || role === 'hr') && item.firstLevelApprovalStatus?.toLowerCase() === 'approved' && item.secondLevelApprovalStatus?.toLowerCase() === 'pending';
+  };
+
+  // Update modal approve/reject handlers to call correct endpoint
   const handleModalApprove = async () => {
     if (!selectedRequest) return;
     if (!modalComments.trim()) {
@@ -280,27 +294,44 @@ export default function ExpenseApprovals() {
       return;
     }
     try {
+      const approverName = getApproverName();
+      let response: any;
       if (selectedRequest._type === 'expense') {
-        const approverName = getApproverName();
-        const response = await api.put(
-          `/api/expenses/${selectedRequest.id}/approve-first-level`,
-          null,
-          {
-            params: {
-              approver: approverName,
-              approverId: user?.id,
-              comments: modalComments,
-            },
-          }
-        );
-        if (response.status === 200) {
+        if (canApproveFirstLevel(selectedRequest)) {
+          response = await api.put(
+            `/api/expenses/${selectedRequest.id}/approve-first-level`,
+            null,
+            {
+              params: {
+                approver: approverName,
+                approverId: user?.id,
+                comments: modalComments,
+              },
+            }
+          );
+        } else if (canApproveSecondLevel(selectedRequest)) {
+          response = await api.put(
+            `/api/expenses/${selectedRequest.id}/approve-second-level`,
+            null,
+            {
+              params: {
+                approver: approverName,
+                approverId: user?.id,
+                comments: modalComments,
+              },
+            }
+          );
+        }
+        if (response?.status === 200) {
           setPendingExpenses((prev) =>
             prev.map((exp) =>
               exp.id === selectedRequest.id
                 ? {
                     ...exp,
-                    firstLevelApprovalStatus: "approved",
-                    firstLevelApprover: approverName,
+                    firstLevelApprovalStatus: response.data.firstLevelApprovalStatus,
+                    secondLevelApprovalStatus: response.data.secondLevelApprovalStatus,
+                    firstLevelApprover: response.data.firstLevelApprover,
+                    secondLevelApprover: response.data.secondLevelApprover,
                   }
                 : exp
             )
@@ -309,26 +340,41 @@ export default function ExpenseApprovals() {
           setSelectedRequest(null);
         }
       } else if (selectedRequest._type === 'travel') {
-        const approverName = getApproverName();
-        const response = await api.put(
-          `/api/travel-requests/${selectedRequest.id}/approve-first-level`,
-          null,
-          {
-            params: {
-              approver: approverName,
-              approverId: user?.id,
-              comments: modalComments,
-            },
-          }
-        );
-        if (response.status === 200) {
+        if (canApproveFirstLevel(selectedRequest)) {
+          response = await api.put(
+            `/api/travel-requests/${selectedRequest.id}/approve-first-level`,
+            null,
+            {
+              params: {
+                approver: approverName,
+                approverId: user?.id,
+                comments: modalComments,
+              },
+            }
+          );
+        } else if (canApproveSecondLevel(selectedRequest)) {
+          response = await api.put(
+            `/api/travel-requests/${selectedRequest.id}/approve-second-level`,
+            null,
+            {
+              params: {
+                approver: approverName,
+                approverId: user?.id,
+                comments: modalComments,
+              },
+            }
+          );
+        }
+        if (response?.status === 200) {
           setPendingTravel((prev) =>
             prev.map((t) =>
               t.id === selectedRequest.id
                 ? {
                     ...t,
-                    firstLevelApprovalStatus: "approved",
-                    firstLevelApprover: approverName,
+                    firstLevelApprovalStatus: response.data.firstLevelApprovalStatus,
+                    secondLevelApprovalStatus: response.data.secondLevelApprovalStatus,
+                    firstLevelApprover: response.data.firstLevelApprover,
+                    secondLevelApprover: response.data.secondLevelApprover,
                   }
                 : t
             )
@@ -341,6 +387,7 @@ export default function ExpenseApprovals() {
       setModalError(error.response?.data?.error || "Failed to approve. Please try again.");
     }
   };
+
   const handleModalReject = async () => {
     if (!selectedRequest) return;
     if (!modalComments.trim()) {
@@ -348,59 +395,89 @@ export default function ExpenseApprovals() {
       return;
     }
     try {
+      const approverName = getApproverName();
+      let response: any;
       if (selectedRequest._type === 'expense') {
-        const approverName = getApproverName();
-        const response = await api.put(
-          `/api/expenses/${selectedRequest.id}/reject-first-level`,
-          null,
-          {
-            params: {
-              approver: approverName,
-              approverId: user?.id,
-              comments: modalComments,
-            },
-          }
-        );
-        if (response.status === 200) {
+        if (canApproveFirstLevel(selectedRequest)) {
+          response = await api.put(
+            `/api/expenses/${selectedRequest.id}/reject-first-level`,
+            null,
+            {
+              params: {
+                approver: approverName,
+                approverId: user?.id,
+                comments: modalComments,
+              },
+            }
+          );
+        } else if (canApproveSecondLevel(selectedRequest)) {
+          response = await api.put(
+            `/api/expenses/${selectedRequest.id}/reject-second-level`,
+            null,
+            {
+              params: {
+                approver: approverName,
+                approverId: user?.id,
+                comments: modalComments,
+              },
+            }
+          );
+        }
+        if (response?.status === 200) {
           setPendingExpenses((prev) =>
             prev.map((exp) =>
               exp.id === selectedRequest.id
                 ? {
                     ...exp,
-                    firstLevelApprovalStatus: "rejected",
-                    firstLevelApprover: approverName,
+                    firstLevelApprovalStatus: response.data.firstLevelApprovalStatus,
+                    secondLevelApprovalStatus: response.data.secondLevelApprovalStatus,
+                    firstLevelApprover: response.data.firstLevelApprover,
+                    secondLevelApprover: response.data.secondLevelApprover,
                   }
                 : exp
-            )
-          );
+          ));
           setConfirmationMessage({ text: "Expense Rejected ❌", type: "reject" });
           setSelectedRequest(null);
         }
       } else if (selectedRequest._type === 'travel') {
-        const approverName = getApproverName();
-        const response = await api.put(
-          `/api/travel-requests/${selectedRequest.id}/reject-first-level`,
-          null,
-          {
-            params: {
-              approver: approverName,
-              approverId: user?.id,
-              comments: modalComments,
-            },
-          }
-        );
-        if (response.status === 200) {
+        if (canApproveFirstLevel(selectedRequest)) {
+          response = await api.put(
+            `/api/travel-requests/${selectedRequest.id}/reject-first-level`,
+            null,
+            {
+              params: {
+                approver: approverName,
+                approverId: user?.id,
+                comments: modalComments,
+              },
+            }
+          );
+        } else if (canApproveSecondLevel(selectedRequest)) {
+          response = await api.put(
+            `/api/travel-requests/${selectedRequest.id}/reject-second-level`,
+            null,
+            {
+              params: {
+                approver: approverName,
+                approverId: user?.id,
+                comments: modalComments,
+              },
+            }
+          );
+        }
+        if (response?.status === 200) {
           setPendingTravel((prev) =>
             prev.map((t) =>
               t.id === selectedRequest.id
                 ? {
                     ...t,
-                    firstLevelApprovalStatus: "rejected",
-                    firstLevelApprover: approverName,
+                    firstLevelApprovalStatus: response.data.firstLevelApprovalStatus,
+                    secondLevelApprovalStatus: response.data.secondLevelApprovalStatus,
+                    firstLevelApprover: response.data.firstLevelApprover,
+                    secondLevelApprover: response.data.secondLevelApprover,
                   }
                 : t
-            )
-          );
+          ));
           setConfirmationMessage({ text: "Travel Rejected ❌", type: "reject" });
           setSelectedRequest(null);
         }
@@ -725,8 +802,7 @@ export default function ExpenseApprovals() {
                 </div>
               )}
             </div>
-            {((selectedRequest._type === 'expense' && canApproveExpense(selectedRequest) && isPending(selectedRequest.firstLevelApprovalStatus)) ||
-              (selectedRequest._type === 'travel' && canApproveTravel(selectedRequest) && isPending(selectedRequest.firstLevelApprovalStatus))) ? (
+            {((selectedRequest && (canApproveFirstLevel(selectedRequest) || canApproveSecondLevel(selectedRequest))) ? (
               <div className="mt-6">
                 <textarea
                   className="w-full border rounded p-2 mb-2"
@@ -741,7 +817,7 @@ export default function ExpenseApprovals() {
                   <button className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700" onClick={handleModalReject}>Reject</button>
                 </div>
               </div>
-            ) : null}
+            ) : null)}
           </div>
         )}
       </ReactModal>

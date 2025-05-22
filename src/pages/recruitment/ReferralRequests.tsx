@@ -80,7 +80,7 @@ export default function ReferralRequests() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {referrals.map((referral) => (
+        {Array.isArray(referrals) && referrals.map((referral) => (
           <div
             key={referral.id}
             className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200"

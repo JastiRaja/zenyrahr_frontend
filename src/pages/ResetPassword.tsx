@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { KeyRound } from "lucide-react";
 import { motion, useMotionValue, useTransform } from "framer-motion";
-import logo from "../assets/logo1.png"; // Adjust the path to your logo image
+import logo from "../assets/logo3.png"; // Adjust the path to your logo image
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
 export default function ResetPassword() {
@@ -11,6 +11,8 @@ export default function ResetPassword() {
   const username = location.state?.email;
   const isVerified = location.state?.verified;
   const otp = location.state?.otp;
+  const isFirstLogin = username && !isVerified && !otp; // First login flow
+  const isForgotPassword = username && isVerified && otp; // Forgot password flow
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
@@ -34,14 +36,16 @@ export default function ResetPassword() {
     return null;
   }
 
-  // Only allow access if verified and otp are present
+  // Only allow access if first login OR forgot password flow
   useEffect(() => {
-    if (!username || !isVerified || !otp) {
+    if (!username) {
+      navigate("/login");
+    } else if (!isFirstLogin && !isForgotPassword) {
       navigate("/forgot-password");
     }
-  }, [username, isVerified, otp, navigate]);
+  }, [username, isFirstLogin, isForgotPassword, navigate]);
 
-  if (!username || !isVerified || !otp) {
+  if (!username || (!isFirstLogin && !isForgotPassword)) {
     return null;
   }
 
@@ -89,22 +93,40 @@ export default function ResetPassword() {
     setError("");
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/auth/verifyPinAndResetPassword`,
-        {
+      let response, responseData;
+      if (isFirstLogin) {
+        // First login: call /auth/resetPassword
+        response = await fetch(`${API_BASE_URL}/auth/resetPassword`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             username: username,
-            pin: otp,
             newPassword: formValues.newPassword,
           }),
-        }
-      );
-      const responseData = await response.json();
+        });
+      } else if (isForgotPassword) {
+        // Forgot password: call /auth/verifyPinAndResetPassword
+        response = await fetch(
+          `${API_BASE_URL}/auth/verifyPinAndResetPassword`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: username,
+              pin: otp,
+              newPassword: formValues.newPassword,
+            }),
+          }
+        );
+      } else {
+        throw new Error("Invalid password reset flow");
+      }
+      responseData = await response.json(); // Parse the response JSON
+
       if (!response.ok) {
         throw new Error(responseData.ErrorMessage || "Password reset failed");
       }
+
       navigate("/login", {
         state: {
           message: "Password reset successful. Please login with your new password.",
@@ -166,7 +188,7 @@ export default function ResetPassword() {
         style={{ height: "600px" }}
       >
         {/* Left Side - Animated Face */}
-        <div className="hidden lg:flex lg:w-1/2 bg-[#F8E7F6] items-center justify-center relative flex-col">
+        <div className="hidden lg:flex lg:w-1/2 bg-[#3c1f3f] items-center justify-center relative flex-col">
           <motion.div
             className="flex justify-center items-center mt-[-100px]"
             initial={{ opacity: 0, y: 200 }}

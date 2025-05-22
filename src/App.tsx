@@ -50,6 +50,14 @@ import RecruitmentJobDetails from './pages/recruitment/JobDetails';
 import JobOpenings from './pages/JobOpenings';
 import ReferralRequests from './pages/recruitment/ReferralRequests';
 import VerifyOTP from "./pages/VerifyOTP";
+import PayrollLayout from "./pages/payroll/PayrollLayout";
+import Payslips from "./pages/payroll/Payslips";
+import AttendanceManagement from "./pages/payroll/AttendanceManagement";
+import PayscaleManagement from "./pages/payroll/PayscaleManagement";
+import PayrollGeneration from './pages/payroll/PayrollGeneration';
+import RoleBasedRoute from "./components/RoleBasedRoute";
+import AdminHolidays from "./pages/admin/AdminHolidays";
+import AdminPayslipManagement from "./pages/payroll/AdminPayslipManagement";
 
 export default function App() {
   return (
@@ -285,13 +293,9 @@ export default function App() {
               <Route
                 path="leave/approvals"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "approve", subject: "leave" },
-                    ]}
-                  >
+                  <RoleBasedRoute allowedRoles={["HR"]}>
                     <LeaveApprovals />
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 }
               />
               <Route
@@ -318,6 +322,45 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="payroll" element={<PayrollLayout />}>
+                <Route index element={<Payslips />} />
+                <Route path="payslips" element={<Payslips />} />
+                <Route
+                  path="attendance"
+                  element={
+                    <RoleBasedRoute allowedRoles={["ADMIN", "HR"]}>
+                      <AttendanceManagement />
+                    </RoleBasedRoute>
+                  }
+                />
+                <Route
+                  path="payscale"
+                  element={
+                    <RoleBasedRoute allowedRoles={["ADMIN", "HR"]}>
+                      <PayscaleManagement />
+                    </RoleBasedRoute>
+                  }
+                />
+                <Route
+                  path="approvals"
+                  element={
+                    <RoleBasedRoute allowedRoles={["ADMIN", "HR"]}>
+                      <AdminPayslipManagement />
+                    </RoleBasedRoute>
+                  }
+                />
+                
+                {/* <Route
+                  path="paygrade"
+                  element={
+                    <RoleBasedRoute allowedRoles={["ADMIN", "HR"]}>
+                      <PayGradeManagement />
+                    </RoleBasedRoute>
+                  }
+                /> */}
+              </Route>
+              <Route path="/payscale" element={<PayscaleManagement />} />
+              <Route path="/payroll" element={<PayrollGeneration />} />
               <Route path="travel" element={<Travel />} />
               <Route path="travel/new-trip" element={<NewTripRequest />} />
               <Route path="travel/submit-expense" element={<SubmitExpense />} />
@@ -349,6 +392,18 @@ export default function App() {
               />
               <Route path="/job-openings" element={<JobOpenings />} />
               <Route path="/job-openings/:id" element={<JobDetails />} />
+              {/* <Route
+                path="/admin/holidays"
+                element={
+                  <ProtectedRoute
+                    requiredPermissions={[
+                      { action: "manage", subject: "employees" },
+                    ]}
+                  >
+                    <AdminHolidays />
+                  </ProtectedRoute>
+                }
+              /> */}
             </Route>
           </Routes>
         </Router>
