@@ -236,7 +236,7 @@ export default function Login() {
           <h2 className="text-3xl font-bold text-center text-gray-900">
             Welcome Back
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          {/* <p className="mt-2 text-center text-sm text-gray-600">
             Don't have an account?{" "}
             <Link
               to="/signup"
@@ -244,7 +244,7 @@ export default function Login() {
             >
               Sign up
             </Link>
-          </p>
+          </p> */}
 
           {error && (
             <motion.div

@@ -447,13 +447,6 @@ export default function Dashboard() {
       change: "Awaiting approval",
       changeType: "neutral",
     },
-    {
-      name: "Performance Score",
-      stat: "4.2/5",
-      icon: Target,
-      change: "Last review",
-      changeType: "increase",
-    },
   ];
 
   const quickActions = [
