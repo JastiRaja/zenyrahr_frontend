@@ -288,7 +288,7 @@ export default function SubmitExpense() {
                 {/* Date Field */}
                 <div className="sm:col-span-1">
                   <label className="block text-sm font-medium text-gray-700">
-                    Date
+                    Date <span className="text-red-500">*</span>
                   </label>
                   <div className="mt-1 relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -309,7 +309,7 @@ export default function SubmitExpense() {
                 {/* Category Field */}
                 <div className="sm:col-span-1">
                   <label className="block text-sm font-medium text-gray-700">
-                    Category
+                    Category <span className="text-red-500">*</span>
                   </label>
                   <div className="mt-1 relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -340,7 +340,7 @@ export default function SubmitExpense() {
                 {/* Amount Field */}
                 <div className="sm:col-span-1">
                   <label className="block text-sm font-medium text-gray-700">
-                    Amount
+                    Amount <span className="text-red-500">*</span>
                   </label>
                   <div className="mt-1 relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -363,7 +363,7 @@ export default function SubmitExpense() {
                 {/* Description Field */}
                 <div className="sm:col-span-1">
                   <label className="block text-sm font-medium text-gray-700">
-                    Description
+                    Description <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     className="block w-full px-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
@@ -382,7 +382,7 @@ export default function SubmitExpense() {
                 {/* File Upload */}
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-700">
-                    Upload Receipts
+                    Upload Receipts <span className="text-red-500">*</span>
                   </label>
                   <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-purple-200 border-dashed rounded-md hover:border-purple-300 transition-colors duration-300">
                     <div className="space-y-1 text-center">

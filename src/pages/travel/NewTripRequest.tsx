@@ -65,6 +65,19 @@ export default function NewTripRequest() {
       return;
     }
 
+    // Client-side validation for required fields
+    if (
+      !formData.destination.trim() ||
+      !formData.purpose.trim() ||
+      !formData.startDate.trim() ||
+      !formData.endDate.trim() ||
+      !formData.transportation.trim() ||
+      !formData.budget.trim() ||
+      formData.documents.length === 0
+    ) {
+      return;
+    }
+
     try {
       const formDataToSend = new FormData();
 
@@ -177,7 +190,7 @@ export default function NewTripRequest() {
             {/* Destination */}
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700">
-                Destination
+                Destination <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -198,7 +211,7 @@ export default function NewTripRequest() {
             {/* Purpose of Travel */}
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700">
-                Purpose of Travel
+                Purpose of Travel <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -219,7 +232,7 @@ export default function NewTripRequest() {
             {/* Start Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Start Date
+                Start Date <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -239,7 +252,7 @@ export default function NewTripRequest() {
             {/* End Date */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                End Date
+                End Date <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -259,7 +272,7 @@ export default function NewTripRequest() {
             {/* Transportation */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Transportation
+                Transportation <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -284,7 +297,7 @@ export default function NewTripRequest() {
             {/* Estimated Budget */}
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Estimated Budget
+                Estimated Budget <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -322,7 +335,7 @@ export default function NewTripRequest() {
             {/* Supporting Documents */}
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700">
-                Supporting Documents
+                Supporting Documents <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-purple-200 border-dashed rounded-md hover:border-purple-300 transition-colors duration-300">
                 <div className="space-y-1 text-center">

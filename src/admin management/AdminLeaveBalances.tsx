@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Search, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, Pencil, Save, Trash } from "lucide-react";
 
 interface LeaveBalance {
   id: number;
@@ -19,6 +19,7 @@ interface Employee {
 interface LeaveType {
   id: number;
   name: string;
+  defaultBalance: number;
 }
 
 export default function AdminLeaveBalances() {
@@ -33,6 +34,9 @@ export default function AdminLeaveBalances() {
   const [newEmployeeId, setNewEmployeeId] = useState<number | null>(null);
   const [newLeaveTypeId, setNewLeaveTypeId] = useState<number | null>(null);
   const [newTotalBalance, setNewTotalBalance] = useState<number>(0);
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editedBalance, setEditedBalance] = useState<number>(0);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
@@ -140,6 +144,30 @@ export default function AdminLeaveBalances() {
     }
   };
 
+  // **Update leave balance**
+  const updateLeaveBalance = async (id: number) => {
+    try {
+      await axios.put(
+        `${API_BASE_URL}/api/leave-balances/${id}?newBalance=${editedBalance}`
+      );
+      setEditingId(null);
+      fetchAllData();
+    } catch (err) {
+      alert("Error updating leave balance.");
+    }
+  };
+
+  // **Delete leave balance**
+  const deleteLeaveBalance = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this leave balance?")) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/api/leave-balances/${id}`);
+      fetchAllData();
+    } catch (err) {
+      alert("Error deleting leave balance.");
+    }
+  };
+
   // **Pagination Controls**
   const totalPages = Math.ceil(leaveBalances.length / itemsPerPage);
   const paginatedBalances = leaveBalances
@@ -184,7 +212,14 @@ export default function AdminLeaveBalances() {
           <select
             className="border p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             value={newLeaveTypeId || ""}
-            onChange={(e) => setNewLeaveTypeId(Number(e.target.value))}
+            onChange={(e) => {
+              const selectedId = Number(e.target.value);
+              setNewLeaveTypeId(selectedId);
+              const selectedType = leaveTypes.find((lt) => lt.id === selectedId);
+              if (selectedType) {
+                setNewTotalBalance(selectedType.defaultBalance);
+              }
+            }}
           >
             <option value="" disabled>
               Select Leave Type
@@ -227,6 +262,7 @@ export default function AdminLeaveBalances() {
                   <th className="border border-gray-300 p-2">Employee</th>
                   <th className="border border-gray-300 p-2">Leave Type</th>
                   <th className="border border-gray-300 p-2">Balance</th>
+                  <th className="border border-gray-300 p-2">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -242,7 +278,42 @@ export default function AdminLeaveBalances() {
                       {balance.leaveTypeName}
                     </td>
                     <td className="border border-gray-300 p-2">
-                      {balance.balance} days
+                      {editingId === balance.id ? (
+                        <input
+                          type="number"
+                          value={editedBalance}
+                          onChange={e => setEditedBalance(Number(e.target.value))}
+                          className="border p-1 rounded w-20"
+                        />
+                      ) : (
+                        `${balance.balance} days`
+                      )}
+                    </td>
+                    <td className="border border-gray-300 p-2 flex gap-2">
+                      {editingId === balance.id ? (
+                        <button
+                          onClick={() => updateLeaveBalance(balance.id)}
+                          className="bg-green-500 text-white px-2 py-1 rounded"
+                        >
+                          <Save className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingId(balance.id);
+                            setEditedBalance(balance.balance);
+                          }}
+                          className="bg-blue-500 text-white px-2 py-1 rounded"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => deleteLeaveBalance(balance.id)}
+                        className="bg-red-500 text-white px-2 py-1 rounded"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 ))}
