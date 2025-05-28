@@ -236,15 +236,6 @@ export default function Login() {
           <h2 className="text-3xl font-bold text-center text-gray-900">
             Welcome Back
           </h2>
-          {/* <p className="mt-2 text-center text-sm text-gray-600">
-            Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              Sign up
-            </Link>
-          </p> */}
 
           {error && (
             <motion.div
