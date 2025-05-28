@@ -14,6 +14,7 @@ const AssignManager = () => {
       firstName: string;
       lastName: string;
     };
+    role: string;
   }
 
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -161,6 +162,14 @@ const AssignManager = () => {
     label: `${emp.code} - ${emp.firstName} ${emp.lastName}`,
   }));
 
+  // Filter only managers for the manager dropdown
+  const managerOptions = employees
+    .filter(emp => emp.role && emp.role.toLowerCase() === "manager")
+    .map(emp => ({
+      value: emp.id,
+      label: `${emp.code} - ${emp.firstName} ${emp.lastName}`,
+    }));
+
   return (
     // <div className="max-w-4xl mx-auto mt-2 p-6 bg-white shadow-lg rounded-lg">
     <div className="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md">
@@ -198,7 +207,7 @@ const AssignManager = () => {
             Select Manager
           </label>
           <Select
-            options={employeeOptions}
+            options={managerOptions}
             value={selectedManager}
             onChange={setSelectedManager}
             placeholder="🔍 Search manager..."
@@ -254,7 +263,7 @@ const AssignManager = () => {
                   <td className="py-2 px-4 border">
                     {editingEmployeeId === item.employeeId ? (
                       <Select
-                        options={employeeOptions}
+                        options={managerOptions}
                         value={newManagerSelection[item.employeeId] || null}
                         onChange={(selected) =>
                           setNewManagerSelection((prev) => ({
