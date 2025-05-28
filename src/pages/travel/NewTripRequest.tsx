@@ -65,19 +65,6 @@ export default function NewTripRequest() {
       return;
     }
 
-    // Client-side validation for required fields
-    if (
-      !formData.destination.trim() ||
-      !formData.purpose.trim() ||
-      !formData.startDate.trim() ||
-      !formData.endDate.trim() ||
-      !formData.transportation.trim() ||
-      !formData.budget.trim() ||
-      formData.documents.length === 0
-    ) {
-      return;
-    }
-
     try {
       const formDataToSend = new FormData();
 

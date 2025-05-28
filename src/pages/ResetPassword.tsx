@@ -17,6 +17,7 @@ export default function ResetPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isClicked, setIsClicked] = useState(false);
   const [formValues, setFormValues] = useState({
+    username: location.state?.email || "",
     newPassword: "",
     confirmPassword: "",
   });
@@ -100,8 +101,8 @@ export default function ResetPassword() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            username: username,
-            newPassword: formValues.newPassword,
+            username: formValues.username,
+            password: formValues.newPassword,
           }),
         });
       } else if (isForgotPassword) {
@@ -112,7 +113,7 @@ export default function ResetPassword() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              username: username,
+              username: formValues.username,
               pin: otp,
               newPassword: formValues.newPassword,
             }),
@@ -310,7 +311,7 @@ export default function ResetPassword() {
               </label>
               <input
                 type="text"
-                value={username}
+                value={formValues.username}
                 disabled
                 className=" block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-gray-500 sm:text-sm"
               />
