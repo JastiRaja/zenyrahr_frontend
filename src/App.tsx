@@ -29,7 +29,6 @@ import SubmitExpense from "./pages/travel/SubmitExpense";
 import ExpenseApprovals from "./pages/approvals/ExpenseApprovals";
 import Wellness from "./pages/Wellness";
 import Login from "./pages/Login";
-import Signup from "./pages/Signup";
 import Unauthorized from "./pages/Unauthorized";
 import ResetPassword from "./pages/ResetPassword";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -67,7 +66,6 @@ export default function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/verify-otp" element={<VerifyOTP />} />
