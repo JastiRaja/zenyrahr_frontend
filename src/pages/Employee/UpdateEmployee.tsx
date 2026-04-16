@@ -512,6 +512,14 @@ const initialFormState: FormState = {
   medicalRecords: [{ id: 1, condition: '', date: '', details: '' }],
 };
 
+const toAbsoluteMediaUrl = (rawUrl?: string) => {
+  const trimmed = String(rawUrl || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL_LOCAL || '').replace(/\/+$/, '');
+  return `${baseUrl}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`;
+};
+
 // Utility: always drop any `id` key
 function stripIds<T extends { id?: any }>(array: T[]): Omit<T, 'id'>[] {
   return array.map(({ id, ...rest }) => rest);
@@ -524,6 +532,7 @@ const UpdateEmployee: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
   const [formData, setFormData] = useState<FormState>(initialFormState);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
 
   const user = JSON.parse(localStorage.getItem('user') || '{}') as { id?: string };
   const userId = user?.id;
@@ -544,6 +553,7 @@ const UpdateEmployee: React.FC = () => {
               address: data.address || '',
             },
           });
+          setProfilePhotoUrl(toAbsoluteMediaUrl(data?.documents?.profileImageUrl));
         } catch {
           setError('Failed to fetch employee data');
         }
@@ -568,33 +578,21 @@ const UpdateEmployee: React.FC = () => {
       const familyDetails = stripIds(formData.familyDetails);
       const medicalRecords = stripIds(formData.medicalRecords);
 
-      let employeeData: FormData | Record<string, any>;
-      if (formData.photo) {
-        const fd = new FormData();
-        Object.entries(formData.personal).forEach(([key, value]) => {
-          fd.append(key, value);
-        });
-        fd.append('photo', formData.photo);
-        fd.append('education', JSON.stringify(education));
-        fd.append('experience', JSON.stringify(experience));
-        fd.append('skills', JSON.stringify(formData.skills));
-        fd.append('interests', JSON.stringify(formData.interests));
-        fd.append('familyDetails', JSON.stringify(familyDetails));
-        fd.append('medicalRecords', JSON.stringify(medicalRecords));
-        employeeData = fd;
-      } else {
-        employeeData = {
-          ...formData.personal,
-          education,
-          experience,
-          skills: formData.skills,
-          interests: formData.interests,
-          familyDetails,
-          medicalRecords,
-        };
-      }
+      const employeeData = {
+        ...formData.personal,
+        education,
+        experience,
+        skills: formData.skills,
+        interests: formData.interests,
+        familyDetails,
+        medicalRecords,
+      };
 
       if (userId) {
+        if (formData.photo) {
+          const uploadResponse = await employeeService.uploadProfilePhoto(userId, formData.photo);
+          setProfilePhotoUrl(toAbsoluteMediaUrl(uploadResponse?.fileUrl));
+        }
         await employeeService.updateEmployee(userId, employeeData);
         setSuccessMessage('Employee information updated successfully!');
       } else {
@@ -615,16 +613,15 @@ const UpdateEmployee: React.FC = () => {
     switch (activeTab) {
       case 'personal':
         return (
-          <>
-            <div className="mb-4">
-              <PhotoUpload
-                onChange={e => {
-                  if (e.target.files?.[0]) {
-                    updateFormData('photo', e.target.files[0]);
-                  }
-                }}
-              />
-            </div>
+          <div className="space-y-4">
+            <PhotoUpload
+              currentPhotoUrl={profilePhotoUrl}
+              onChange={e => {
+                if (e.target.files?.[0]) {
+                  updateFormData('photo', e.target.files[0]);
+                }
+              }}
+            />
             <PersonalInfoForm
               formData={formData.personal}
               onChange={e => {
@@ -635,7 +632,7 @@ const UpdateEmployee: React.FC = () => {
                 });
               }}
             />
-          </>
+          </div>
         );
       case 'education':
         return (
@@ -772,41 +769,65 @@ const UpdateEmployee: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Update Personal Info</h1>
-        <p className="mt-2 text-lg text-gray-600">Enter Your Details Below</p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h1 className="text-3xl font-bold tracking-tight">Update Personal Info</h1>
+          <p className="mt-1 text-sm text-sky-50">
+            Keep your profile, records, and employment details up to date.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Active Section</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">
+              {TABS.find((tab) => tab.id === activeTab)?.name}
+            </p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Education Records</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">{formData.education.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Experience Records</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">{formData.experience.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Family Records</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">{formData.familyDetails.length}</p>
+          </div>
+        </div>
+      </section>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="rounded-md border border-rose-200 bg-rose-50 p-4">
+          <p className="text-sm text-rose-700">{error}</p>
         </div>
       )}
 
       {successMessage && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-sm text-green-600">{successMessage}</p>
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm text-emerald-700">{successMessage}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            {TABS.map(tab => {
+      <form onSubmit={handleSubmit} className="rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-4 py-3">
+          <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Tabs">
+            {TABS.map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
+                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium whitespace-nowrap transition ${
                     activeTab === tab.id
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? "border-sky-500 bg-sky-50 text-sky-700"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-4 w-4" />
                   <span>{tab.name}</span>
                 </button>
               );
@@ -814,20 +835,20 @@ const UpdateEmployee: React.FC = () => {
           </nav>
         </div>
 
-        <div className="mt-6">{renderTabContent()}</div>
+        <div className="px-4 py-4">{renderTabContent()}</div>
 
-        <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+        <div className="flex justify-end gap-3 border-t border-slate-200 px-4 py-4">
           <button
             type="button"
             onClick={() => navigate('/employees')}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60"
           >
             {loading ? 'Updating Employee info...' : 'Update'}
           </button>

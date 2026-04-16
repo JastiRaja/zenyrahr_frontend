@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Briefcase, MapPin, Users, Clock, Building2, IndianRupee, X, Edit2, Check } from 'lucide-react';
 import api from '../../api/axios';
 import { useAuth } from '../../contexts/AuthContext';
+import CommonDialog from '../../components/CommonDialog';
 
 // Define recruitment status options
 const RECRUITMENT_STATUS = {
@@ -47,6 +48,17 @@ export default function JobDetails() {
   const [showReferralForm, setShowReferralForm] = useState(false);
   const [editingStatus, setEditingStatus] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [dialogState, setDialogState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    tone: 'default' | 'success' | 'error';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    tone: 'default',
+  });
   const [referralForm, setReferralForm] = useState<ReferralForm>({
     candidateName: '',
     email: '',
@@ -116,12 +128,22 @@ export default function JobDetails() {
       
       if (response.data) {
         setShowReferralForm(false);
-        alert('Referral submitted successfully!');
+        setDialogState({
+          isOpen: true,
+          title: 'Referral Submitted',
+          message: 'Referral submitted successfully!',
+          tone: 'success',
+        });
       }
     } catch (err: any) {
       console.error('Error submitting referral:', err);
       const errorMessage = err.response?.data?.message || err.message || 'Failed to submit referral. Please try again.';
-      alert(errorMessage);
+      setDialogState({
+        isOpen: true,
+        title: 'Referral Failed',
+        message: errorMessage,
+        tone: 'error',
+      });
     }
   };
 
@@ -149,7 +171,12 @@ export default function JobDetails() {
       }
     } catch (error) {
       console.error('Error updating status:', error);
-      alert('Failed to update status. Please try again.');
+      setDialogState({
+        isOpen: true,
+        title: 'Status Update Failed',
+        message: 'Failed to update status. Please try again.',
+        tone: 'error',
+      });
     }
   };
 
@@ -385,6 +412,22 @@ export default function JobDetails() {
           </div>
         </div>
       )}
+      <CommonDialog
+        isOpen={dialogState.isOpen}
+        title={dialogState.title}
+        message={dialogState.message}
+        tone={dialogState.tone}
+        confirmText="OK"
+        hideCancel
+        onClose={() =>
+          setDialogState({
+            isOpen: false,
+            title: '',
+            message: '',
+            tone: 'default',
+          })
+        }
+      />
     </div>
   );
 } 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarChart, LineChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, TrendingUp, UserPlus, UserMinus, DollarSign, Clock } from 'lucide-react';
+import { Users, TrendingUp, UserPlus, UserMinus, IndianRupee, Clock } from 'lucide-react';
 
 const monthlyData = [
   { month: 'Jan', employees: 220, hires: 12, turnover: 5 },
@@ -21,8 +21,8 @@ export default function Analytics() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">HR Analytics</h1>
-        <p className="mt-2 text-lg text-gray-600">
+        <h1 className="text-3xl font-bold text-slate-900">HR Analytics</h1>
+        <p className="mt-2 text-lg text-slate-600">
           Track key metrics and insights about your workforce
         </p>
       </div>
@@ -41,9 +41,9 @@ export default function Analytics() {
                 <item.icon className="h-6 w-6 text-white" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">{item.name}</p>
+                <p className="text-sm font-medium text-slate-500">{item.name}</p>
                 <div className="flex items-center">
-                  <p className="text-2xl font-semibold text-gray-900">{item.value}</p>
+                  <p className="text-2xl font-semibold text-slate-900">{item.value}</p>
                   <span className="ml-2 text-sm font-medium text-green-600">
                     {item.change}
                   </span>
@@ -57,7 +57,7 @@ export default function Analytics() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Workforce Growth</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Workforce Growth</h2>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={monthlyData}>
@@ -72,7 +72,7 @@ export default function Analytics() {
         </div>
 
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Department Distribution</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Department Distribution</h2>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={departmentData}>
@@ -90,17 +90,17 @@ export default function Analytics() {
       {/* Detailed Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Recruitment Metrics</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Recruitment Metrics</h2>
           <div className="space-y-4">
             {[
               { label: 'Applications per Opening', value: '45', trend: '+12%' },
               { label: 'Interview to Offer Ratio', value: '3:1', trend: 'Stable' },
               { label: 'Offer Acceptance Rate', value: '85%', trend: '+5%' },
             ].map((metric) => (
-              <div key={metric.label} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div key={metric.label} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200/70">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">{metric.label}</p>
-                  <p className="text-lg font-semibold text-gray-900">{metric.value}</p>
+                  <p className="text-sm font-medium text-slate-600">{metric.label}</p>
+                  <p className="text-lg font-semibold text-slate-900">{metric.value}</p>
                 </div>
                 <span className="text-sm text-green-600">{metric.trend}</span>
               </div>
@@ -109,7 +109,7 @@ export default function Analytics() {
         </div>
 
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Employee Satisfaction</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Employee Satisfaction</h2>
           <div className="space-y-4">
             {[
               { label: 'Overall Satisfaction', value: '4.2/5', percentage: '84%' },
@@ -118,10 +118,10 @@ export default function Analytics() {
             ].map((item) => (
               <div key={item.label} className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm font-medium text-gray-600">{item.label}</span>
-                  <span className="text-sm font-medium text-gray-900">{item.value}</span>
+                  <span className="text-sm font-medium text-slate-600">{item.label}</span>
+                  <span className="text-sm font-medium text-slate-900">{item.value}</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-slate-200 rounded-full h-2">
                   <div 
                     className="bg-indigo-600 h-2 rounded-full" 
                     style={{ width: item.percentage }}

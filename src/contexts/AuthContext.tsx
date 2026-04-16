@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { User, Role, rolePermissions } from "../types/auth";
+import { User, Role, rolePermissions, resolvePermissionRole } from "../types/auth";
 
 interface AuthContextType {
   user: User | null;
@@ -9,22 +9,13 @@ interface AuthContextType {
   hasPermission: (action: string, subject: string) => boolean;
 }
 
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  department: string;
-  role: string;
-  permissions: string[];
-}
-
 interface LoginResponse {
   id: string;
   username: string;
   firstName: string;
-  lastName: string;
-  role: Role;
+  name?: string;
+  role: string;
+  organizationId?: number | null;
   accessToken: string;
   refreshToken: string;
   redirectToResetPassword: boolean;
@@ -62,32 +53,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.ErrorMessage || "Login failed");
+      const raw = await response.text();
+      let message = "Login failed";
+      try {
+        const errorData = JSON.parse(raw);
+        message = errorData?.ErrorMessage || errorData?.message || message;
+      } catch {
+        message = raw || message;
+      }
+      if (/ORGANIZATION_DISABLED/i.test(message)) {
+        message = "Your organization is currently disabled. Please contact your main admin.";
+      }
+      throw new Error(message);
     }
 
     const data: LoginResponse = await response.json();
 
-    // Ensure valid role mapping
-    const validRole = Object.keys(rolePermissions).find(
-      (r) => r.toLowerCase() === data.role.toLowerCase()
-    );
-
-    if (!validRole) {
-      throw new Error(`Invalid role received from server: ${data.role}`);
-    }
-
     if (!data.redirectToResetPassword) {
+      const normalizedRole = (data.role || "").toLowerCase() as Role;
       const loggedInUser: User = {
         id: data.id,
         email: data.username,
         firstName: data.firstName,
-        lastName: data.lastName,
-        role: validRole as Role,
+        fullName: data.name || data.firstName,
+        role: normalizedRole,
+        organizationId: data.organizationId ?? null,
       };
 
       setUser(loggedInUser);
       localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("token", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
     }
 
@@ -97,6 +92,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("token");
+    localStorage.removeItem("auth_token");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
   };
@@ -104,12 +101,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const hasPermission = (action: string, subject: string) => {
     if (!user) return false;
 
-    // Ensure role exists in rolePermissions
-    const userPermissions = rolePermissions[user.role];
-    if (!userPermissions) {
-      console.error(`No permissions defined for role: ${user.role}`);
-      return false;
-    }
+    const permissionRole = resolvePermissionRole(user.role);
+    const userPermissions = rolePermissions[permissionRole];
 
     return userPermissions.some(
       (permission) =>

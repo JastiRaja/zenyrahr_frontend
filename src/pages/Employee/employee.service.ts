@@ -32,7 +32,7 @@ class EmployeeService {
     }
   }
 
-  async updateEmployee(id: string, updatedData: Partial<Employee> | FormData) {
+  async updateEmployee(id: string, updatedData: Partial<Employee>) {
     try {
       if (!id) {
         throw new Error('Employee ID is required');
@@ -40,19 +40,12 @@ class EmployeeService {
 
       const currentData = await this.getEmployee(id);
       
-      const mergedData = updatedData instanceof FormData ? updatedData : {
+      const mergedData = {
         ...currentData,
         ...updatedData,
       };
 
-      const config = updatedData instanceof FormData ? { 
-        headers: { 
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        } 
-      } : {};
-
-      const response = await api.put(`auth/employees/${id}`, mergedData, config);
+      const response = await api.put(`auth/employees/${id}`, mergedData);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -62,6 +55,23 @@ class EmployeeService {
         throw new Error('Employee not found');
       }
       console.error('Error updating employee:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  async uploadProfilePhoto(id: string, file: File) {
+    try {
+      if (!id) {
+        throw new Error('Employee ID is required');
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post(`auth/employees/${id}/profile-picture`, formData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error uploading profile photo:', error.response?.data || error.message);
       throw error;
     }
   }

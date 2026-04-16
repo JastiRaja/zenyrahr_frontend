@@ -12,8 +12,8 @@ import {
   Popconfirm,
 } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
+import api from '../../api/axios';
 
 const { Option } = Select;
 
@@ -43,7 +43,10 @@ const PayscaleManagement: React.FC = () => {
   const [form] = Form.useForm();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuth();
+  const watchedEmployeeId = Form.useWatch('employeeId', form);
+  const watchedCtc = Form.useWatch('ctc', form);
 
   useEffect(() => {
     fetchPayscales();
@@ -53,8 +56,7 @@ const PayscaleManagement: React.FC = () => {
   const fetchPayscales = async () => {
     try {
       setLoading(true);
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
-      const response = await axios.get(`${API_BASE_URL}/api/payscale`);
+      const response = await api.get(`/api/payscale`);
       setPayscales(Array.isArray(response.data) ? response.data.filter(ps => ps.employee) : []);
     } catch (error) {
       message.error('Failed to fetch payscales');
@@ -66,8 +68,7 @@ const PayscaleManagement: React.FC = () => {
 
   const fetchEmployees = async () => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
-      const response = await axios.get(`${API_BASE_URL}/auth/employees`);
+      const response = await api.get(`/auth/employees`);
       setEmployees(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       message.error('Failed to fetch employees');
@@ -92,8 +93,7 @@ const PayscaleManagement: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
-      await axios.delete(`${API_BASE_URL}/api/payscale/${id}`);
+      await api.delete(`/api/payscale/${id}`);
       message.success('Payscale deleted successfully');
       fetchPayscales();
     } catch (error) {
@@ -103,7 +103,6 @@ const PayscaleManagement: React.FC = () => {
 
   const handleSubmit = async (values: any) => {
     try {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
       // Transform values to match backend expectations
       const payload = {
         ...values,
@@ -113,10 +112,10 @@ const PayscaleManagement: React.FC = () => {
       delete payload.employeeId;
 
       if (editingId) {
-        await axios.put(`${API_BASE_URL}/api/payscale/${editingId}`, payload);
+        await api.put(`/api/payscale/${editingId}`, payload);
         message.success('Payscale updated successfully');
       } else {
-        await axios.post(`${API_BASE_URL}/api/payscale`, payload);
+        await api.post(`/api/payscale`, payload);
         message.success('Payscale created successfully');
       }
       setModalVisible(false);
@@ -139,6 +138,13 @@ const PayscaleManagement: React.FC = () => {
     const ctc = calculateCTC(allValues);
     form.setFieldsValue({ ctc });
   };
+  const formatCurrency = (value?: number) => `₹${Number(value || 0).toLocaleString()}/month`;
+  const moneyFormatter = (value?: string | number) =>
+    value !== undefined && value !== null && value !== ''
+      ? `₹ ${Number(value).toLocaleString()}`
+      : '';
+  const moneyParser = (value?: string) => (value ? value.replace(/[^\d.-]/g, '') : '');
+  const selectedEmployee = employees.find((emp) => emp.id === watchedEmployeeId);
 
   const columns = [
     {
@@ -164,6 +170,15 @@ const PayscaleManagement: React.FC = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      render: (value: string) => (
+        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+          value?.toLowerCase() === 'active'
+            ? 'bg-emerald-50 text-emerald-700'
+            : 'bg-slate-100 text-slate-700'
+        }`}>
+          {value || 'N/A'}
+        </span>
+      ),
     },
     {
       title: 'Allowance (Monthly)',
@@ -180,6 +195,7 @@ const PayscaleManagement: React.FC = () => {
             type="primary"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            size="small"
           >
             Edit
           </Button>
@@ -195,188 +211,314 @@ const PayscaleManagement: React.FC = () => {
       ),
     },
   ];
+  const filteredPayscales = payscales.filter((item) => {
+    const employeeName = `${item.employee?.firstName || ''} ${item.employee?.lastName || ''}`.toLowerCase();
+    return employeeName.includes(searchTerm.toLowerCase());
+  });
+  const totalCtc = filteredPayscales.reduce((sum, item) => sum + (item.ctc || 0), 0);
+  const activeCount = filteredPayscales.filter((item) => item.status?.toLowerCase() === 'active').length;
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between mb-4">
-        <h1 className="text-2xl font-bold">Payscale Management</h1>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleAdd}
-        >
-          Add Payscale
-        </Button>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-4 px-1 py-2">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Payscale Management</h1>
+              <p className="mt-1 text-sm text-sky-50">
+                Manage monthly compensation structures for employees.
+              </p>
+            </div>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+              Add Payscale
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Payscale Records</p>
+            <p className="mt-1 text-xl font-bold text-slate-900">{filteredPayscales.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Active</p>
+            <p className="mt-1 text-xl font-bold text-emerald-700">{activeCount}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Employees</p>
+            <p className="mt-1 text-xl font-bold text-sky-700">{employees.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Total Monthly CTC</p>
+            <p className="mt-1 text-xl font-bold text-indigo-700">₹{totalCtc.toLocaleString()}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+        <Input
+          placeholder="Search by employee name..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          allowClear
+        />
+      </section>
 
       <Table
         columns={columns}
-        dataSource={payscales}
+        dataSource={filteredPayscales}
         loading={loading}
         rowKey="id"
+        className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm"
+        pagination={{ pageSize: 10, showSizeChanger: false }}
       />
 
       <Modal
-        title={editingId ? 'Edit Payscale' : 'Add Payscale'}
+        title={
+          <div>
+            <p className="text-xl font-semibold text-slate-900">
+              {editingId ? 'Edit Payscale' : 'Add Payscale'}
+            </p>
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Configure monthly salary components
+            </p>
+          </div>
+        }
         open={modalVisible}
-        onCancel={() => setModalVisible(false)}
+        onCancel={() => {
+          setModalVisible(false);
+          form.resetFields();
+        }}
         footer={null}
+        width={980}
+        centered
+        destroyOnClose
       >
+        <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3">
+          <div>
+            <p className="text-xs uppercase text-slate-500">Employee</p>
+            <p className="text-sm font-semibold text-slate-900">
+              {selectedEmployee ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}` : 'Not selected'}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase text-slate-500">Monthly CTC</p>
+            <p className="text-sm font-semibold text-sky-700">{formatCurrency(watchedCtc)}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase text-slate-500">Mode</p>
+            <p className="text-sm font-semibold text-slate-900">{editingId ? 'Update' : 'Create'}</p>
+          </div>
+        </div>
+
         <Form
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
           onValuesChange={onValuesChange}
+          requiredMark={false}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Form.Item
-              name="employeeId"
-              label="Employee"
-              rules={[{ required: true }]}
-              style={{ gridColumn: '1 / span 2' }}
-            >
-              <Select>
-                {Array.isArray(employees) && employees.map(emp => (
-                  <Option key={emp.id} value={emp.id}>
-                    {emp.firstName} {emp.lastName}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
+          <div className="max-h-[62vh] space-y-4 overflow-y-auto pr-1">
+            <section className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Employee & CTC</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Form.Item
+                  name="employeeId"
+                  label="Employee"
+                  rules={[{ required: true, message: 'Please select an employee' }]}
+                  className="sm:col-span-2"
+                >
+                  <Select
+                    showSearch
+                    placeholder="Select employee"
+                    optionFilterProp="label"
+                    options={(employees || []).map((emp) => ({
+                      value: emp.id,
+                      label: `${emp.firstName} ${emp.lastName}`,
+                    }))}
+                  />
+                </Form.Item>
 
-            <Form.Item
-              name="ctc"
-              label="CTC (Monthly)"
-              rules={[{ required: true }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `₹ ${value}/month`}
-                parser={value => value ? value.replace(/₹\s?|\/month/g, '') : ''}
-                readOnly
-              />
-            </Form.Item>
+                <Form.Item
+                  name="ctc"
+                  label="CTC (Monthly)"
+                  rules={[{ required: true, message: 'CTC is required' }]}
+                  className="sm:col-span-2"
+                >
+                  <InputNumber
+                    style={{ width: '100%' }}
+                    readOnly
+                    controls={false}
+                    formatter={(value) => (value !== undefined && value !== null && value !== '' ? `${moneyFormatter(value)}/month` : '')}
+                    parser={moneyParser}
+                    placeholder="Auto-calculated from salary components"
+                  />
+                </Form.Item>
+              </div>
+            </section>
 
-            <Form.Item
-              name="basicSalary"
-              label="Basic Salary (Monthly)"
-              rules={[{ required: true }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/month'}
-                parser={value => value!.replace(/[^\d.-]/g, '')}
-              />
-            </Form.Item>
+            <section className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Monthly Earnings</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Form.Item
+                  name="basicSalary"
+                  label="Basic Salary"
+                  rules={[{ required: true, message: 'Enter basic salary' }]}
+                >
+                  <InputNumber
+                    min={0}
+                    controls={false}
+                    style={{ width: '100%' }}
+                    formatter={(value) => (value !== undefined && value !== null && value !== '' ? `${moneyFormatter(value)}/month` : '')}
+                    parser={moneyParser}
+                    placeholder="Enter amount"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              name="hra"
-              label="HRA (Monthly)"
-              rules={[{ required: true }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/month'}
-                parser={value => value!.replace(/[^\d.-]/g, '')}
-              />
-            </Form.Item>
+                <Form.Item
+                  name="hra"
+                  label="HRA"
+                  rules={[{ required: true, message: 'Enter HRA amount' }]}
+                >
+                  <InputNumber
+                    min={0}
+                    controls={false}
+                    style={{ width: '100%' }}
+                    formatter={(value) => (value !== undefined && value !== null && value !== '' ? `${moneyFormatter(value)}/month` : '')}
+                    parser={moneyParser}
+                    placeholder="Enter amount"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              name="da"
-              label="DA (Monthly)"
-              rules={[{ required: true }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/month'}
-                parser={value => value!.replace(/[^\d.-]/g, '')}
-              />
-            </Form.Item>
+                <Form.Item
+                  name="da"
+                  label="DA"
+                  rules={[{ required: true, message: 'Enter DA amount' }]}
+                >
+                  <InputNumber
+                    min={0}
+                    controls={false}
+                    style={{ width: '100%' }}
+                    formatter={(value) => (value !== undefined && value !== null && value !== '' ? `${moneyFormatter(value)}/month` : '')}
+                    parser={moneyParser}
+                    placeholder="Enter amount"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              name="allowance"
-              label="Allowance (Monthly)"
-              rules={[{ required: true }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/month'}
-                parser={value => value!.replace(/[^\d.-]/g, '')}
-              />
-            </Form.Item>
+                <Form.Item
+                  name="allowance"
+                  label="Allowance"
+                  rules={[{ required: true, message: 'Enter allowance amount' }]}
+                >
+                  <InputNumber
+                    min={0}
+                    controls={false}
+                    style={{ width: '100%' }}
+                    formatter={(value) => (value !== undefined && value !== null && value !== '' ? `${moneyFormatter(value)}/month` : '')}
+                    parser={moneyParser}
+                    placeholder="Enter amount"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              name="medicalAllowance"
-              label="Medical Allowance (Monthly)"
-              rules={[{ required: true }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/month'}
-                parser={value => value!.replace(/[^\d.-]/g, '')}
-              />
-            </Form.Item>
+                <Form.Item
+                  name="medicalAllowance"
+                  label="Medical Allowance"
+                  rules={[{ required: true, message: 'Enter medical allowance amount' }]}
+                  className="sm:col-span-2"
+                >
+                  <InputNumber
+                    min={0}
+                    controls={false}
+                    style={{ width: '100%' }}
+                    formatter={(value) => (value !== undefined && value !== null && value !== '' ? `${moneyFormatter(value)}/month` : '')}
+                    parser={moneyParser}
+                    placeholder="Enter amount"
+                  />
+                </Form.Item>
+              </div>
+            </section>
 
-            <Form.Item
-              name="pfContribution"
-              label="PF Contribution (Monthly)"
-              rules={[{ required: true }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/month'}
-                parser={value => value!.replace(/[^\d.-]/g, '')}
-              />
-            </Form.Item>
+            <section className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Deductions & Benefits</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Form.Item
+                  name="pfContribution"
+                  label="PF Contribution"
+                  rules={[{ required: true, message: 'Enter PF contribution amount' }]}
+                >
+                  <InputNumber
+                    min={0}
+                    controls={false}
+                    style={{ width: '100%' }}
+                    formatter={(value) => (value !== undefined && value !== null && value !== '' ? `${moneyFormatter(value)}/month` : '')}
+                    parser={moneyParser}
+                    placeholder="Enter amount"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              name="professionalTax"
-              label="Professional Tax (Monthly)"
-              rules={[{ required: true }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/month'}
-                parser={value => value!.replace(/[^\d.-]/g, '')}
-              />
-            </Form.Item>
+                <Form.Item
+                  name="professionalTax"
+                  label="Professional Tax"
+                  rules={[{ required: true, message: 'Enter professional tax amount' }]}
+                >
+                  <InputNumber
+                    min={0}
+                    controls={false}
+                    style={{ width: '100%' }}
+                    formatter={(value) => (value !== undefined && value !== null && value !== '' ? `${moneyFormatter(value)}/month` : '')}
+                    parser={moneyParser}
+                    placeholder="Enter amount"
+                  />
+                </Form.Item>
 
-            <Form.Item
-              name="healthInsurance"
-              label="Health Insurance (Monthly)"
-              rules={[{ required: true }]}
-            >
-              <InputNumber
-                style={{ width: '100%' }}
-                formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '/month'}
-                parser={value => value!.replace(/[^\d.-]/g, '')}
-              />
-            </Form.Item>
+                <Form.Item
+                  name="healthInsurance"
+                  label="Health Insurance"
+                  rules={[{ required: true, message: 'Enter health insurance amount' }]}
+                  className="sm:col-span-2"
+                >
+                  <InputNumber
+                    min={0}
+                    controls={false}
+                    style={{ width: '100%' }}
+                    formatter={(value) => (value !== undefined && value !== null && value !== '' ? `${moneyFormatter(value)}/month` : '')}
+                    parser={moneyParser}
+                    placeholder="Enter amount"
+                  />
+                </Form.Item>
+              </div>
+            </section>
 
-            <Form.Item
-              name="effectiveFrom"
-              label="Effective From"
-              rules={[{ required: true, message: 'Please select the effective from date' }]}
-              style={{ gridColumn: '1 / span 2' }}
-            >
-              <Input type="date" />
-            </Form.Item>
+            <section className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Effective Dates</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Form.Item
+                  name="effectiveFrom"
+                  label="Effective From"
+                  rules={[{ required: true, message: 'Please select the effective from date' }]}
+                >
+                  <Input type="date" />
+                </Form.Item>
 
-            <Form.Item
-              name="effectiveTo"
-              label="Effective To"
-              style={{ gridColumn: '1 / span 2' }}
-            >
-              <Input type="date" />
-            </Form.Item>
+                <Form.Item
+                  name="effectiveTo"
+                  label="Effective To"
+                >
+                  <Input type="date" />
+                </Form.Item>
+              </div>
+            </section>
           </div>
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                {editingId ? 'Update' : 'Create'}
-              </Button>
-              <Button onClick={() => setModalVisible(false)}>
+
+          <Form.Item className="mb-0 mt-4 border-t border-slate-200 pt-3">
+            <Space className="w-full justify-end">
+              <Button onClick={() => {
+                setModalVisible(false);
+                form.resetFields();
+              }}>
                 Cancel
+              </Button>
+              <Button type="primary" htmlType="submit">
+                {editingId ? 'Update Payscale' : 'Create Payscale'}
               </Button>
             </Space>
           </Form.Item>

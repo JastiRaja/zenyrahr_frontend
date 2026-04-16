@@ -10,6 +10,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import TextField from '@mui/material/TextField';
 import axios from 'axios';
 import { toast, ToastContainer } from 'react-toastify';
+import CommonDialog from './components/CommonDialog';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 const columns = [
@@ -41,6 +42,12 @@ export default function Emptable() {
   const [selectedRow, setSelectedRow] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedRows, setSelectedRows] = useState([]);
+  const [messageDialog, setMessageDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    tone: 'default',
+  });
 
   useEffect(() => {
     axios
@@ -102,7 +109,12 @@ export default function Emptable() {
 
         .catch((error) => {
           console.error('Error updating data:', error);
-          alert('Failed to save the changes. Please try again.');
+          setMessageDialog({
+            isOpen: true,
+            title: 'Update Failed',
+            message: 'Failed to save the changes. Please try again.',
+            tone: 'error',
+          });
         });
     } else {
       console.error('No row selected to save.');
@@ -201,6 +213,22 @@ export default function Emptable() {
           </Button>
         </DialogActions>
       </Dialog>
+      <CommonDialog
+        isOpen={messageDialog.isOpen}
+        title={messageDialog.title}
+        message={messageDialog.message}
+        tone={messageDialog.tone}
+        confirmText="OK"
+        hideCancel
+        onClose={() =>
+          setMessageDialog({
+            isOpen: false,
+            title: '',
+            message: '',
+            tone: 'default',
+          })
+        }
+      />
       <center><ToastContainer /></center>
     </Paper>
 

@@ -1,27 +1,33 @@
-// import api from './axios';
+import api from "./axios";
 
-// export const getHolidays = async (year: number) => {
-//   try {
-//     const response = await api.get(`/api/admin/holidays`, { params: { year } });
-//     return response.data;
-//   } catch (error) {
-//     throw new Error('Failed to fetch holidays. Please try again later.');
-//   }
-// };
+export type HolidayType = "GENERAL" | "OPTIONAL";
 
-// export const addHolidays = async (holidays: any[]) => {
-//   try {
-//     const response = await api.post(`/api/admin/holidays/bulk`, holidays);
-//     return response.data;
-//   } catch (error) {
-//     throw new Error('Failed to add holidays. Please try again later.');
-//   }
-// };
+export interface HolidayPayload {
+  date: string;
+  name: string;
+  type: HolidayType;
+  year: number;
+}
 
-// export const deleteHoliday = async (id: number) => {
-//   try {
-//     await api.delete(`/api/admin/holidays/${id}`);
-//   } catch (error) {
-//     throw new Error('Failed to delete holiday. Please try again later.');
-//   }
-// }; 
+export interface Holiday extends HolidayPayload {
+  id: number;
+}
+
+export const getHolidays = async (year: number, organizationId?: number): Promise<Holiday[]> => {
+  const response = await api.get("/api/admin/holidays", { params: { year, organizationId } });
+  return response.data ?? [];
+};
+
+export const getPublicHolidays = async (year: number, organizationId?: number): Promise<Holiday[]> => {
+  const response = await api.get("/api/holidays", { params: { year, organizationId } });
+  return response.data ?? [];
+};
+
+export const addHolidays = async (holidays: HolidayPayload[], organizationId?: number): Promise<Holiday[]> => {
+  const response = await api.post("/api/admin/holidays/bulk", holidays, { params: { organizationId } });
+  return response.data ?? [];
+};
+
+export const deleteHoliday = async (id: number, organizationId?: number): Promise<void> => {
+  await api.delete(`/api/admin/holidays/${id}`, { params: { organizationId } });
+};

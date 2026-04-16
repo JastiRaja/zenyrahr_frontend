@@ -3,7 +3,6 @@ import {
   Routes,
   Route,
   Navigate,
-  Outlet,
 } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -20,6 +19,7 @@ import SubmitTimesheet from "./pages/timesheet/SubmitTimesheet";
 import TimesheetApprovals from "./pages/approvals/TimesheetApprovals";
 import Leave from "./pages/Leave";
 import RequestLeave from "./pages/leave/RequestLeave";
+import HolidayList from "./pages/leave/HolidayList";
 import LeaveApprovals from "./pages/approvals/LeaveApprovals";
 import Analytics from "./pages/Analytics";
 import Performance from "./pages/Performance";
@@ -57,6 +57,8 @@ import PayrollGeneration from './pages/payroll/PayrollGeneration';
 import RoleBasedRoute from "./components/RoleBasedRoute";
 import AdminHolidays from "./pages/admin/AdminHolidays";
 import AdminPayslipManagement from "./pages/payroll/AdminPayslipManagement";
+import Organizations from "./pages/admin/Organizations";
+import ApprovalHierarchy from "./pages/admin/ApprovalHierarchy";
 
 export default function App() {
   return (
@@ -178,6 +180,18 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/admin/approval-hierarchy"
+                element={
+                  <ProtectedRoute
+                    requiredPermissions={[
+                      { action: "manage", subject: "settings" },
+                    ]}
+                  >
+                    <ApprovalHierarchy />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/selfservice/:id" element={<SelfService />} />
               <Route path="self-service" element={<SelfService />} />
               <Route
@@ -199,7 +213,7 @@ export default function App() {
                 element={
                   <ProtectedRoute
                     requiredPermissions={[
-                      { action: "manage", subject: "recruitment" },
+                      { action: "read", subject: "employees" },
                     ]}
                   >
                     <Recruitment />
@@ -209,13 +223,15 @@ export default function App() {
               <Route
                 path="recruitment/post"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "manage", subject: "recruitment" },
-                    ]}
-                  >
-                    <PostJob />
-                  </ProtectedRoute>
+                  <RoleBasedRoute allowedRoles={["HR"]}>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "manage", subject: "recruitment" },
+                      ]}
+                    >
+                      <PostJob />
+                    </ProtectedRoute>
+                  </RoleBasedRoute>
                 }
               />
               <Route
@@ -223,7 +239,7 @@ export default function App() {
                 element={
                   <ProtectedRoute
                     requiredPermissions={[
-                      { action: "manage", subject: "recruitment" },
+                      { action: "read", subject: "employees" },
                     ]}
                   >
                     <RecruitmentJobDetails />
@@ -288,12 +304,17 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="leave/holidays" element={<HolidayList />} />
               <Route
                 path="leave/approvals"
                 element={
-                  <RoleBasedRoute allowedRoles={["HR"]}>
+                  <ProtectedRoute
+                    requiredPermissions={[
+                      { action: "approve", subject: "leave" },
+                    ]}
+                  >
                     <LeaveApprovals />
-                  </RoleBasedRoute>
+                  </ProtectedRoute>
                 }
               />
               <Route
@@ -326,7 +347,7 @@ export default function App() {
                 <Route
                   path="attendance"
                   element={
-                    <RoleBasedRoute allowedRoles={["ADMIN", "HR"]}>
+                    <RoleBasedRoute allowedRoles={["ADMIN", "HR", "ORG_ADMIN"]}>
                       <AttendanceManagement />
                     </RoleBasedRoute>
                   }
@@ -390,18 +411,22 @@ export default function App() {
               />
               <Route path="/job-openings" element={<JobOpenings />} />
               <Route path="/job-openings/:id" element={<JobDetails />} />
-              {/* <Route
+              <Route
                 path="/admin/holidays"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "manage", subject: "employees" },
-                    ]}
-                  >
+                  <RoleBasedRoute allowedRoles={["HR", "ADMIN"]}>
                     <AdminHolidays />
-                  </ProtectedRoute>
+                  </RoleBasedRoute>
                 }
-              /> */}
+              />
+              <Route
+                path="/admin/organizations"
+                element={
+                  <RoleBasedRoute allowedRoles={["ADMIN"]}>
+                    <Organizations />
+                  </RoleBasedRoute>
+                }
+              />
             </Route>
           </Routes>
         </Router>

@@ -1,3 +1,4 @@
+# ZenyraHR frontend — CI/CD (adjust DEST_PATH / cd on EC2 to match your server layout)
 stages:
   - build
   - deploy

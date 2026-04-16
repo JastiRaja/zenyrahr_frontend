@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../api/axios";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import isBetween from "dayjs/plugin/isBetween";
@@ -8,8 +8,7 @@ import { Check, X, Eye, Search } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useAuth } from "../../contexts/AuthContext";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
+import CommonDialog from "../../components/CommonDialog";
 
 dayjs.extend(isoWeek);
 dayjs.extend(isBetween);
@@ -61,6 +60,16 @@ export default function TimesheetApprovals() {
     null
   );
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [decisionDialog, setDecisionDialog] = useState<{
+    isOpen: boolean;
+    action: "approve" | "reject" | null;
+    timesheet: Timesheet | null;
+  }>({
+    isOpen: false,
+    action: null,
+    timesheet: null,
+  });
+  const [decisionComment, setDecisionComment] = useState("");
 
   useEffect(() => {
     if (!user?.id || (user.role !== "manager" && user.role !== "admin")) {
@@ -73,9 +82,7 @@ export default function TimesheetApprovals() {
     const fetchTimesheets = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}/api/timesheet/employee/${user.id}`
-        );
+        const response = await api.get(`/api/timesheet/employee/${user.id}`);
         const timesheetsData: Timesheet[] = response.data;
 
         const timesheetsWithEmployees = await Promise.all(
@@ -83,9 +90,7 @@ export default function TimesheetApprovals() {
             if (!ts.employeeId) return ts;
 
             try {
-              const empResponse = await axios.get(
-                `${API_BASE_URL}/auth/employees/${ts.employeeId}`
-              );
+              const empResponse = await api.get(`/auth/employees/${ts.employeeId}`);
               return { ...ts, employee: empResponse.data };
             } catch (err) {
               console.error(
@@ -120,7 +125,7 @@ export default function TimesheetApprovals() {
 
     const fetchEmployees = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/auth/employees`);
+        const response = await api.get(`/auth/employees`);
         setEmployees(response.data);
       } catch (err) {
         console.error("Failed to fetch employees:", err);
@@ -140,21 +145,18 @@ export default function TimesheetApprovals() {
     }
   }, [confirmationMessage]);
 
-  const handleApprove = async (id: number) => {
+  const handleApprove = async (id: number, approvalComment: string) => {
     if (!user?.id) {
       setError("User is not authenticated.");
       return;
     }
 
-    const approvalComment = prompt("Enter approval comments:");
-    if (!approvalComment) return;
-
     try {
-      const apiUrl = `${API_BASE_URL}/api/timesheet/approve/${id}?employeeId=${
+      const apiUrl = `/api/timesheet/approve/${id}?employeeId=${
         user.id
       }&approved=true&requiredComments=${encodeURIComponent(approvalComment)}`;
 
-      await axios.put(apiUrl);
+      await api.put(apiUrl);
 
       setTimesheets((prev) =>
         prev.map((ts) =>
@@ -174,21 +176,18 @@ export default function TimesheetApprovals() {
     }
   };
 
-  const handleReject = async (id: number) => {
+  const handleReject = async (id: number, rejectionComment: string) => {
     if (!user?.id) {
       setError("User is not authenticated.");
       return;
     }
 
-    const rejectionComment = prompt("Enter reason for rejection:");
-    if (!rejectionComment) return;
-
     try {
-      const apiUrl = `${API_BASE_URL}/api/timesheet/reject/${id}?employeeId=${
+      const apiUrl = `/api/timesheet/reject/${id}?employeeId=${
         user.id
       }&requiredComments=${encodeURIComponent(rejectionComment)}`;
 
-      await axios.put(apiUrl);
+      await api.put(apiUrl);
 
       setTimesheets((prev) =>
         prev.map((ts) =>
@@ -203,6 +202,44 @@ export default function TimesheetApprovals() {
       console.error("❌ Error rejecting timesheet:", error);
       setError("Failed to reject timesheet.");
     }
+  };
+
+  const openDecisionDialog = (action: "approve" | "reject", timesheet: Timesheet) => {
+    setDecisionComment("");
+    setDecisionDialog({
+      isOpen: true,
+      action,
+      timesheet,
+    });
+  };
+
+  const closeDecisionDialog = () => {
+    setDecisionDialog({
+      isOpen: false,
+      action: null,
+      timesheet: null,
+    });
+    setDecisionComment("");
+  };
+
+  const handleDecisionConfirm = async () => {
+    if (!decisionDialog.action || !decisionDialog.timesheet) return;
+    if (!decisionComment.trim()) {
+      setError(
+        decisionDialog.action === "approve"
+          ? "Approval comments are required."
+          : "Rejection reason is required."
+      );
+      return;
+    }
+
+    if (decisionDialog.action === "approve") {
+      await handleApprove(decisionDialog.timesheet.id, decisionComment.trim());
+    } else {
+      await handleReject(decisionDialog.timesheet.id, decisionComment.trim());
+    }
+
+    closeDecisionDialog();
   };
 
   const getDaysInRange = (start: Date, end: Date) => {
@@ -272,6 +309,21 @@ export default function TimesheetApprovals() {
           selectedEmployee.id
         )
       : 0;
+  const approvedCount = filteredTimesheets.filter(
+    (entry) => entry.status === "APPROVED"
+  ).length;
+  const pendingCount = filteredTimesheets.filter(
+    (entry) => entry.status === "PENDING"
+  ).length;
+  const rejectedCount = filteredTimesheets.filter(
+    (entry) => entry.status === "REJECTED"
+  ).length;
+  const getStatusClass = (status: string) => {
+    if (status === "APPROVED") return "text-emerald-700 bg-emerald-50";
+    if (status === "PENDING") return "text-amber-700 bg-amber-50";
+    if (status === "WITHDRAWN") return "text-slate-700 bg-slate-100";
+    return "text-rose-700 bg-rose-50";
+  };
 
   const filteredEmployees = employees.filter((employee) =>
     `${employee.firstName} ${employee.lastName}`
@@ -280,20 +332,40 @@ export default function TimesheetApprovals() {
   );
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Timesheet Approvals
-        </h1>
-        <p className="mt-2 text-gray-600">
-          Review and approve/reject team timesheets
-        </p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Timesheet Approvals
+          </h1>
+          <p className="mt-1 text-sm text-sky-50">
+            Review and approve or reject team timesheets.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Total Hours</p>
+            <p className="mt-1 text-xl font-bold text-slate-900">{totalHoursPerWeek} hrs</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Pending</p>
+            <p className="mt-1 text-xl font-bold text-amber-700">{pendingCount}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Approved</p>
+            <p className="mt-1 text-xl font-bold text-emerald-700">{approvedCount}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Rejected</p>
+            <p className="mt-1 text-xl font-bold text-rose-700">{rejectedCount}</p>
+          </div>
+        </div>
+      </section>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex gap-3">
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
           <div className="flex flex-col">
-            <label className="mb-1 text-sm font-medium text-gray-700">
+            <label className="mb-1 text-xs font-semibold uppercase text-slate-500">
               From
             </label>
             <DatePicker
@@ -303,12 +375,12 @@ export default function TimesheetApprovals() {
               startDate={startDate}
               endDate={endDate}
               dateFormat="MMMM d, yyyy"
-              className="w-full border rounded-md p-2"
+              className="w-full rounded-md border border-slate-300 p-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
               placeholderText="Start Date"
             />
           </div>
           <div className="flex flex-col">
-            <label className="mb-1 text-sm font-medium text-gray-700">To</label>
+            <label className="mb-1 text-xs font-semibold uppercase text-slate-500">To</label>
             <DatePicker
               selected={endDate}
               onChange={(date) => setEndDate(date)}
@@ -316,19 +388,17 @@ export default function TimesheetApprovals() {
               startDate={startDate}
               endDate={endDate}
               dateFormat="MMMM d, yyyy"
-              className="w-full border rounded-md p-2"
+              className="w-full rounded-md border border-slate-300 p-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
               placeholderText="End Date"
             />
           </div>
-        </div>
-        <div className="flex gap-3 flex-1">
-          <div className="flex flex-col flex-1 relative">
-            <label className="mb-1 text-sm font-medium text-gray-700">
+          <div className="flex flex-col relative">
+            <label className="mb-1 text-xs font-semibold uppercase text-slate-500">
               Select Employee
             </label>
             <div className="relative">
               <div
-                className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm cursor-pointer"
+                className="block w-full cursor-pointer rounded-md border border-slate-300 bg-white py-2 pl-3 pr-10 text-sm leading-5 text-slate-700"
                 onClick={() => setShowEmployeeDropdown(!showEmployeeDropdown)}
               >
                 {selectedEmployee
@@ -336,17 +406,17 @@ export default function TimesheetApprovals() {
                   : "All"}
               </div>
               {showEmployeeDropdown && (
-                <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white py-1 text-sm shadow-lg">
                   <input
                     type="text"
-                    className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    className="mx-2 mb-1 block w-[calc(100%-1rem)] rounded-md border border-slate-300 py-2 pl-3 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                     placeholder="Search employee..."
                     value={employeeSearchTerm}
                     onChange={(e) => setEmployeeSearchTerm(e.target.value)}
                   />
                   <ul className="py-1">
                     <li
-                      className="cursor-pointer select-none relative py-2 pl-3 pr-9 text-gray-900 hover:bg-indigo-600 hover:text-white"
+                      className="relative cursor-pointer select-none py-2 pl-3 pr-9 text-slate-900 hover:bg-sky-700 hover:text-white"
                       onClick={() => {
                         setSelectedEmployee(null);
                         setShowEmployeeDropdown(false);
@@ -357,7 +427,7 @@ export default function TimesheetApprovals() {
                     {filteredEmployees.map((employee) => (
                       <li
                         key={employee.id}
-                        className="cursor-pointer select-none relative py-2 pl-3 pr-9 text-gray-900 hover:bg-indigo-600 hover:text-white"
+                        className="relative cursor-pointer select-none py-2 pl-3 pr-9 text-slate-900 hover:bg-sky-700 hover:text-white"
                         onClick={() => {
                           setSelectedEmployee(employee);
                           setShowEmployeeDropdown(false);
@@ -372,13 +442,13 @@ export default function TimesheetApprovals() {
             </div>
           </div>
           <div className="flex flex-col">
-            <label className="mb-1 text-sm font-medium text-gray-700">
+            <label className="mb-1 text-xs font-semibold uppercase text-slate-500">
               Status
             </label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              className="block w-full rounded-md border border-slate-300 py-2 pl-3 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
             >
               <option value="all">All</option>
               <option value="pending">Pending</option>
@@ -387,17 +457,11 @@ export default function TimesheetApprovals() {
             </select>
           </div>
         </div>
-      </div>
-
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Total Hours This Week: {totalHoursPerWeek} hours
-        </h2>
-      </div>
+      </section>
 
       {confirmationMessage && (
         <div
-          className={`fixed top-5 right-5 p-4 text-white rounded-lg shadow-lg transition-all ${
+          className={`fixed right-5 top-5 rounded-md p-4 text-white shadow-lg transition-all ${
             confirmationMessage.type === "approve"
               ? "bg-green-600"
               : "bg-red-600"
@@ -407,7 +471,8 @@ export default function TimesheetApprovals() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {daysInWeek.map((day) => {
           const dayEntries = filteredTimesheets.filter((entry) =>
             dayjs(entry.date).isSame(day, "day")
@@ -415,16 +480,16 @@ export default function TimesheetApprovals() {
           return (
             <div
               key={day.toString()}
-              className="p-5 rounded-lg shadow-md border bg-white transition-all relative cursor-pointer hover:shadow-lg"
+              className="relative cursor-pointer rounded-md border border-slate-200 bg-slate-50 p-4 transition hover:shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-md font-semibold text-gray-900">
-                  {dayjs(day).format("dddd, MMMM D, YYYY")}
+                <h3 className="text-sm font-semibold text-slate-900">
+                  {dayjs(day).format("ddd, MMM D YYYY")}
                 </h3>
-                <Eye className="h-5 w-5 text-gray-600" />
+                <Eye className="h-4 w-4 text-slate-500" />
               </div>
               {dayEntries.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-xs text-slate-500">
                   No timesheet entries available.
                 </p>
               ) : (
@@ -433,28 +498,18 @@ export default function TimesheetApprovals() {
                     key={entry.id}
                     onClick={() => setSelectedTimesheet(entry)}
                   >
-                    <p className="mt-2 text-sm font-bold text-gray-900">
+                    <p className="mt-2 text-sm font-bold text-slate-900">
                       {entry.employee
                         ? `${entry.employee.firstName} ${entry.employee.lastName}`
                         : "Unknown Employee"}
                     </p>
-                    <p className="mt-2 text-sm font-semibold text-gray-900">
+                    <p className="mt-1 truncate text-sm font-semibold text-slate-900">
                       {entry.project.projectName}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs text-slate-500">
                       {entry.hoursWorked} hours
                     </p>
-                    <p
-                      className={`text-sm font-semibold ${
-                        entry.status === "APPROVED"
-                          ? "text-green-600"
-                          : entry.status === "PENDING"
-                          ? "text-yellow-600"
-                          : entry.status === "WITHDRAWN"
-                          ? "text-blue-600"
-                          : "text-red-600"
-                      }`}
-                    >
+                    <p className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusClass(entry.status)}`}>
                       {entry.status}
                     </p>
                   </div>
@@ -464,55 +519,56 @@ export default function TimesheetApprovals() {
           );
         })}
         {filteredTimesheets.length === 0 && (
-          <div className="col-span-full text-center text-gray-500">
+          <div className="col-span-full text-center text-slate-500">
             No employee found.
           </div>
         )}
       </div>
+      </section>
 
       {selectedTimesheet && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full relative">
+        <div className="fixed inset-0 flex items-center justify-center bg-slate-900/50">
+          <div className="relative w-full max-w-2xl rounded-md border border-slate-200 bg-white p-6 shadow-lg">
             <button
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+              className="absolute right-3 top-3 text-slate-500 hover:text-slate-700"
               onClick={() => setSelectedTimesheet(null)}
             >
               <X className="h-6 w-6" />
             </button>
 
-            <h3 className="text-xl font-bold text-gray-900">
+            <h3 className="text-xl font-bold text-slate-900">
               {selectedTimesheet.project.projectName}
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-600">
               👤{" "}
               {selectedTimesheet.employee
                 ? `${selectedTimesheet.employee.firstName} ${selectedTimesheet.employee.lastName}`
                 : "Unknown Employee"}
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
               📅 {dayjs(selectedTimesheet.date).format("DD MMM YYYY")}
             </p>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-slate-700">
               ⏳ Total Hours: {selectedTimesheet.hoursWorked} hrs
             </p>
-            <p className="text-sm font-semibold">Task Description:</p>
-            <p className="text-gray-600">{selectedTimesheet.description}</p>
-            <p className="text-sm font-semibold">Comments:</p>
-            <p className="text-gray-600">
+            <p className="mt-3 text-sm font-semibold text-slate-900">Task Description:</p>
+            <p className="text-slate-600">{selectedTimesheet.description}</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">Comments:</p>
+            <p className="text-slate-600">
               {selectedTimesheet.requiredComments || "No comments provided."}
             </p>
 
             {selectedTimesheet.status === "PENDING" && (
               <div className="mt-4 flex space-x-3">
                 <button
-                  className="p-2 rounded-full bg-green-600 text-white"
-                  onClick={() => handleApprove(selectedTimesheet.id)}
+                  className="rounded-md bg-emerald-600 p-2 text-white hover:bg-emerald-700"
+                  onClick={() => openDecisionDialog("approve", selectedTimesheet)}
                 >
                   <Check className="h-5 w-5" />
                 </button>
                 <button
-                  className="p-2 rounded-full bg-red-600 text-white"
-                  onClick={() => handleReject(selectedTimesheet.id)}
+                  className="rounded-md bg-rose-600 p-2 text-white hover:bg-rose-700"
+                  onClick={() => openDecisionDialog("reject", selectedTimesheet)}
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -521,6 +577,44 @@ export default function TimesheetApprovals() {
           </div>
         </div>
       )}
+
+      <CommonDialog
+        isOpen={decisionDialog.isOpen}
+        title={
+          decisionDialog.action === "approve"
+            ? "Approve Timesheet"
+            : "Reject Timesheet"
+        }
+        message={
+          <div className="space-y-2">
+            <p className="text-sm text-slate-700">
+              {decisionDialog.action === "approve"
+                ? "Add approval comments before approving this entry."
+                : "Provide a rejection reason before rejecting this entry."}
+            </p>
+            <textarea
+              value={decisionComment}
+              onChange={(e) => setDecisionComment(e.target.value)}
+              rows={4}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+              placeholder={
+                decisionDialog.action === "approve"
+                  ? "Enter approval comments..."
+                  : "Enter rejection reason..."
+              }
+            />
+          </div>
+        }
+        tone={decisionDialog.action === "approve" ? "success" : "error"}
+        confirmText={
+          decisionDialog.action === "approve"
+            ? "Confirm Approve"
+            : "Confirm Reject"
+        }
+        cancelText="Cancel"
+        onConfirm={handleDecisionConfirm}
+        onClose={closeDecisionDialog}
+      />
     </div>
   );
 }

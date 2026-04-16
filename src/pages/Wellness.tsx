@@ -24,8 +24,8 @@ export default function Wellness() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Employee Wellness</h1>
-        <p className="mt-2 text-lg text-gray-600">
+        <h1 className="text-3xl font-bold text-slate-900">Employee Wellness</h1>
+        <p className="mt-2 text-lg text-slate-600">
           Take care of your physical and mental well-being
         </p>
       </div>
@@ -44,9 +44,9 @@ export default function Wellness() {
                 <item.icon className="h-6 w-6 text-white" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">{item.name}</p>
+                <p className="text-sm font-medium text-slate-500">{item.name}</p>
                 <div className="flex items-center">
-                  <p className="text-2xl font-semibold text-gray-900">{item.value}</p>
+                  <p className="text-2xl font-semibold text-slate-900">{item.value}</p>
                   <span className="ml-2 text-sm font-medium text-green-600">
                     {item.trend}
                   </span>
@@ -71,11 +71,11 @@ export default function Wellness() {
                   <action.icon className="h-6 w-6 text-indigo-600" />
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">{action.name}</h3>
-                  <p className="text-sm text-gray-500">{action.desc}</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{action.name}</h3>
+                  <p className="text-sm text-slate-500">{action.desc}</p>
                 </div>
               </div>
-              <ArrowRight className="h-5 w-5 text-gray-400" />
+              <ArrowRight className="h-5 w-5 text-slate-400" />
             </div>
           </div>
         ))}
@@ -83,10 +83,10 @@ export default function Wellness() {
 
       {/* Active Programs */}
       <div className="card p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">Active Wellness Programs</h2>
+        <h2 className="text-lg font-semibold text-slate-900 mb-6">Active Wellness Programs</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {wellnessPrograms.map((program) => (
-            <div key={program.id} className="flex flex-col md:flex-row bg-white rounded-lg overflow-hidden border border-gray-100 hover:shadow-md transition-shadow duration-200">
+            <div key={program.id} className="flex flex-col md:flex-row bg-white rounded-xl overflow-hidden border border-slate-200/70 hover:shadow-md transition-shadow duration-200">
               <div className="w-full md:w-48 h-48 md:h-auto relative">
                 <img
                   src={program.image}
@@ -100,13 +100,13 @@ export default function Wellness() {
                     {program.category}
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{program.title}</h3>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">{program.title}</h3>
                 <div className="space-y-2">
-                  <div className="flex items-center text-sm text-gray-500">
+                  <div className="flex items-center text-sm text-slate-500">
                     <Calendar className="h-4 w-4 mr-2" />
                     {program.schedule}
                   </div>
-                  <div className="flex items-center text-sm text-gray-500">
+                  <div className="flex items-center text-sm text-slate-500">
                     <Users className="h-4 w-4 mr-2" />
                     {program.participants} participants
                   </div>
@@ -123,7 +123,7 @@ export default function Wellness() {
       {/* Upcoming Events */}
       <div className="card p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Upcoming Wellness Events</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Upcoming Wellness Events</h2>
           <button className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
             View All
           </button>
@@ -143,24 +143,24 @@ export default function Wellness() {
               instructor: 'Chef Michael Brown',
             },
           ].map((event, index) => (
-            <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+            <div key={index} className="flex items-start space-x-4 p-4 bg-slate-50 rounded-xl border border-slate-200/70">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
                   <Calendar className="h-6 w-6 text-indigo-600" />
                 </div>
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-gray-900">{event.title}</h3>
-                <div className="mt-1 flex items-center text-sm text-gray-500">
-                  <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                <h3 className="text-lg font-semibold text-slate-900">{event.title}</h3>
+                <div className="mt-1 flex items-center text-sm text-slate-500">
+                  <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
                   {event.date}
                 </div>
-                <div className="mt-1 flex items-center text-sm text-gray-500">
-                  <Clock className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                <div className="mt-1 flex items-center text-sm text-slate-500">
+                  <Clock className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
                   {event.time}
                 </div>
-                <div className="mt-1 flex items-center text-sm text-gray-500">
-                  <Users className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                <div className="mt-1 flex items-center text-sm text-slate-500">
+                  <Users className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
                   {event.instructor}
                 </div>
               </div>

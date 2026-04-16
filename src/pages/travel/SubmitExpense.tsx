@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -212,16 +212,18 @@ export default function SubmitExpense() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Submit Expense</h1>
-        <p className="mt-2 text-lg text-gray-600">
-          Record and submit your business expenses
-        </p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h1 className="text-3xl font-bold tracking-tight">Submit Expense</h1>
+          <p className="mt-1 text-sm text-sky-50">
+            Record and submit your business expenses.
+          </p>
+        </div>
+      </section>
 
       {/* Expense Summary Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 mb-8">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
           {
             label: "Total Amount",
@@ -241,16 +243,16 @@ export default function SubmitExpense() {
         ].map((stat) => (
           <div
             key={stat.label}
-            className="card p-4 bg-gradient-to-br from-purple-50 to-white border-2 border-purple-100 hover:border-purple-200 transition-colors duration-300"
+            className="rounded-md border border-slate-200 bg-white p-4 shadow-sm"
           >
-            <h3 className="text-sm font-medium text-purple-600">
+            <h3 className="text-xs font-semibold uppercase text-slate-500">
               {stat.label}
             </h3>
             <p className="mt-2 flex items-baseline">
-              <span className="text-2xl font-semibold text-purple-900">
+              <span className="text-xl font-semibold text-slate-900">
                 {stat.value}
               </span>
-              <span className="ml-2 text-sm text-purple-500">{stat.type}</span>
+              <span className="ml-2 text-xs text-slate-500">{stat.type}</span>
             </p>
           </div>
         ))}
@@ -259,10 +261,10 @@ export default function SubmitExpense() {
       {/* Notification Section */}
       {notification && (
         <div
-          className={`mb-4 p-4 rounded-md flex items-center ${
+          className={`rounded-md border p-4 text-sm ${
             notification.includes("Successfully")
-              ? "bg-green-50 text-green-700"
-              : "bg-red-50 text-red-700"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-rose-200 bg-rose-50 text-rose-700"
           }`}
         >
           {notification.includes("Successfully") ? (
@@ -278,16 +280,16 @@ export default function SubmitExpense() {
         {formEntries.map((expense) => (
           <div
             key={expense.id}
-            className="card p-6 bg-gradient-to-br from-white to-purple-50 mb-6"
+            className="mb-6 rounded-md border border-slate-300 bg-white p-4 shadow-sm"
           >
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
               Expense Details
             </h2>
             <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 items-start border-b border-gray-200 pb-6 last:border-0 last:pb-0">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 items-start border-b border-slate-200 pb-6 last:border-0 last:pb-0">
                 {/* Date Field */}
                 <div className="sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-xs font-semibold uppercase text-slate-500">
                     Date <span className="text-red-500">*</span>
                   </label>
                   <div className="mt-1 relative">
@@ -296,7 +298,7 @@ export default function SubmitExpense() {
                     </div>
                     <input
                       type="date"
-                      className="block w-full pl-10 pr-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                      className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                       value={expense.date}
                       onChange={(e) =>
                         handleInputChange(expense.id, "date", e.target.value)
@@ -308,7 +310,7 @@ export default function SubmitExpense() {
 
                 {/* Category Field */}
                 <div className="sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-xs font-semibold uppercase text-slate-500">
                     Category <span className="text-red-500">*</span>
                   </label>
                   <div className="mt-1 relative">
@@ -316,7 +318,7 @@ export default function SubmitExpense() {
                       <Tag className="h-5 w-5 text-purple-400" />
                     </div>
                     <select
-                      className="block w-full pl-10 pr-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                      className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                       value={expense.category}
                       onChange={(e) =>
                         handleInputChange(
@@ -339,18 +341,18 @@ export default function SubmitExpense() {
 
                 {/* Amount Field */}
                 <div className="sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-xs font-semibold uppercase text-slate-500">
                     Amount <span className="text-red-500">*</span>
                   </label>
                   <div className="mt-1 relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      {/* <DollarSign className="h-5 w-5 text-purple-400" /> */}
+                      {/* <IndianRupee className="h-5 w-5 text-purple-400" /> */}
                       <IndianRupee className="h-5 w-5 text-purple-400" />
                     </div>
                     <input
                       type="number"
                       step="0.01"
-                      className="block w-full pl-10 pr-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                      className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                       value={expense.amount}
                       onChange={(e) =>
                         handleInputChange(expense.id, "amount", e.target.value)
@@ -362,11 +364,11 @@ export default function SubmitExpense() {
 
                 {/* Description Field */}
                 <div className="sm:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-xs font-semibold uppercase text-slate-500">
                     Description <span className="text-red-500">*</span>
                   </label>
                   <textarea
-                    className="block w-full px-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                     value={expense.description}
                     onChange={(e) =>
                       handleInputChange(
@@ -381,14 +383,14 @@ export default function SubmitExpense() {
 
                 {/* File Upload */}
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Upload Receipts <span className="text-red-500">*</span>
+                  <label className="block text-xs font-semibold uppercase text-slate-500">
+                    Upload Receipts (Optional)
                   </label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-purple-200 border-dashed rounded-md hover:border-purple-300 transition-colors duration-300">
+                  <div className="mt-1 flex justify-center rounded-md border-2 border-dashed border-sky-200 px-6 pb-6 pt-5 transition-colors duration-300 hover:border-sky-300">
                     <div className="space-y-1 text-center">
-                      <FileText className="mx-auto h-12 w-12 text-purple-400" />
-                      <div className="flex text-sm text-gray-600">
-                        <label className="relative cursor-pointer bg-white rounded-md font-medium text-purple-600 hover:text-purple-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-purple-500">
+                      <FileText className="mx-auto h-12 w-12 text-sky-400" />
+                      <div className="flex text-sm text-slate-600">
+                        <label className="relative cursor-pointer rounded-md bg-white font-medium text-sky-700 hover:text-sky-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-sky-500 focus-within:ring-offset-2">
                           <span>Upload files</span>
                           <input
                             type="file"
@@ -399,7 +401,7 @@ export default function SubmitExpense() {
                         </label>
                         <p className="pl-1">or drag and drop</p>
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-slate-500">
                         PDF, DOC up to 10MB
                       </p>
                     </div>
@@ -409,17 +411,17 @@ export default function SubmitExpense() {
                 {/* Files List */}
                 {expense.documents.length > 0 && (
                   <div className="sm:col-span-2">
-                    <h4 className="text-sm font-medium text-gray-700">
+                    <h4 className="text-sm font-medium text-slate-700">
                       Uploaded Files
                     </h4>
-                    <ul className="mt-2 space-y-2 text-sm text-gray-700">
+                    <ul className="mt-2 space-y-2 text-sm text-slate-700">
                       {expense.documents.map((file, index) => (
                         <li
                           key={`${file.name}-${index}`}
                           className="flex items-center justify-between"
                         >
                           <span>{file.name}</span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-slate-500">
                             ({(file.size / 1024).toFixed(2)} KB)
                           </span>
                           <button
@@ -457,14 +459,14 @@ export default function SubmitExpense() {
           <button
             type="button"
             onClick={addExpense}
-            className="px-4 py-2 border border-purple-300 text-purple-700 rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-300"
+            className="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Expense
           </button>
           <button
             type="submit"
-            className="px-4 py-2 border border-transparent text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-md hover:from-purple-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-300"
+            className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
           >
             Submit Expenses
           </button>

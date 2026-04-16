@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { Check, X, Search, Eye, Calendar } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Check, X, Search, Calendar } from "lucide-react";
 import dayjs from "dayjs";
+import api from "../api/axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
 interface Employee {
   id: number;
@@ -56,15 +55,13 @@ export default function AdminLeaveRequests() {
     setError(null);
     try {
       // Fetch leave requests
-      const requestsResponse = await axios.get(
-        `${API_BASE_URL}/api/leave-requests`
-      );
+      const requestsResponse = await api.get(`/api/leave-requests`);
       const requests: LeaveRequest[] = requestsResponse.data;
 
       // Fetch employees and leave types
       const [employeesResponse, leaveTypesResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/auth/employees`),
-        axios.get(`${API_BASE_URL}/api/leave-types`),
+        api.get(`/auth/employees`),
+        api.get(`/api/leave-types`),
       ]);
 
       const employees: Employee[] = employeesResponse.data;
@@ -92,7 +89,7 @@ export default function AdminLeaveRequests() {
 
   const handleApprove = async (id: number) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/leave-requests/${id}/approve`);
+      await api.put(`/api/leave-requests/${id}/approve`);
       await fetchAllData(); // Refresh all data
     } catch (err) {
       console.error("Error approving leave request:", err);
@@ -102,7 +99,7 @@ export default function AdminLeaveRequests() {
 
   const handleReject = async (id: number) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/leave-requests/${id}/reject`);
+      await api.put(`/api/leave-requests/${id}/reject`);
       await fetchAllData(); // Refresh all data
     } catch (err) {
       console.error("Error rejecting leave request:", err);
@@ -110,16 +107,25 @@ export default function AdminLeaveRequests() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const pendingCount = leaveRequests.filter(
+    (request) => request.status.toLowerCase() === "pending"
+  ).length;
+  const approvedCount = leaveRequests.filter(
+    (request) => request.status.toLowerCase() === "approved"
+  ).length;
+  const rejectedCount = leaveRequests.filter(
+    (request) => request.status.toLowerCase() === "rejected"
+  ).length;
+  const getStatusPill = (status: string) => {
     switch (status.toLowerCase()) {
       case "approved":
-        return "text-green-600";
+        return "bg-emerald-50 text-emerald-700";
       case "rejected":
-        return "text-red-600";
+        return "bg-rose-50 text-rose-700";
       case "pending":
-        return "text-yellow-600";
+        return "bg-amber-50 text-amber-700";
       default:
-        return "text-gray-600";
+        return "bg-slate-100 text-slate-700";
     }
   };
 
@@ -136,22 +142,42 @@ export default function AdminLeaveRequests() {
   });
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">
-        Employee Leave Requests
-      </h1>
-      <p className="text-gray-600 mb-6">
-        Manage and approve/reject employee leave requests here.
-      </p>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h1 className="text-3xl font-bold tracking-tight">Employee Leave Requests</h1>
+          <p className="mt-1 text-sm text-sky-50">
+            Manage and process employee leave requests.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Total Requests</p>
+            <p className="mt-1 text-xl font-bold text-slate-900">{leaveRequests.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Pending</p>
+            <p className="mt-1 text-xl font-bold text-amber-700">{pendingCount}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Approved</p>
+            <p className="mt-1 text-xl font-bold text-emerald-700">{approvedCount}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Rejected</p>
+            <p className="mt-1 text-xl font-bold text-rose-700">{rejectedCount}</p>
+          </div>
+        </div>
+      </section>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      {/* Filters and Search */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row">
         <div className="flex-1">
           <div className="relative">
             <input
@@ -159,15 +185,15 @@ export default function AdminLeaveRequests() {
               placeholder="Search by employee name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-4 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
             />
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           </div>
         </div>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
         >
           <option value="all">All Status</option>
           <option value="pending">Pending</option>
@@ -175,45 +201,41 @@ export default function AdminLeaveRequests() {
           <option value="rejected">Rejected</option>
         </select>
       </div>
+      </section>
 
-      {/* Leave Requests List */}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           </div>
         ) : filteredRequests.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
+          <div className="p-10 text-center text-sm text-slate-500">
             No leave requests found
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-slate-200">
             {filteredRequests.map((request) => (
               <div
                 key={request.id}
-                className="p-6 hover:bg-gray-50 cursor-pointer"
+                className="cursor-pointer p-4 transition hover:bg-slate-50"
                 onClick={() => setSelectedRequest(request)}
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-sm font-semibold text-slate-900">
                       {request.employee?.firstName || ""} {request.employee?.lastName || ""}
                     </h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-xs text-slate-500">
                       {request.leaveType?.name || "Unknown Leave Type"} - {request.totalDays} days
                     </p>
-                    <div className="flex items-center mt-2 text-sm text-gray-500">
-                      <Calendar className="h-4 w-4 mr-1" />
+                    <div className="mt-2 flex items-center text-xs text-slate-500">
+                      <Calendar className="mr-1 h-4 w-4" />
                       {dayjs(request.startDate).format("MMM D, YYYY")} -{" "}
                       {dayjs(request.endDate).format("MMM D, YYYY")}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <span
-                      className={`text-sm font-medium ${getStatusColor(
-                        request.status
-                      )}`}
-                    >
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusPill(request.status)}`}>
                       {request.status}
                     </span>
                     {request.status.toLowerCase() === "pending" && (
@@ -223,7 +245,7 @@ export default function AdminLeaveRequests() {
                             e.stopPropagation();
                             handleApprove(request.id);
                           }}
-                          className="p-2 rounded-full bg-green-100 text-green-600 hover:bg-green-200"
+                          className="rounded-md bg-emerald-100 p-2 text-emerald-700 hover:bg-emerald-200"
                         >
                           <Check className="h-5 w-5" />
                         </button>
@@ -232,7 +254,7 @@ export default function AdminLeaveRequests() {
                             e.stopPropagation();
                             handleReject(request.id);
                           }}
-                          className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                          className="rounded-md bg-rose-100 p-2 text-rose-700 hover:bg-rose-200"
                         >
                           <X className="h-5 w-5" />
                         </button>
@@ -244,19 +266,19 @@ export default function AdminLeaveRequests() {
             ))}
           </div>
         )}
-      </div>
+      </section>
 
       {/* Leave Request Details Modal */}
       {selectedRequest && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-2xl rounded-md border border-slate-200 bg-white p-6 shadow-xl">
             <div className="flex justify-between items-start mb-4">
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-slate-900">
                 Leave Request Details
               </h2>
               <button
                 onClick={() => setSelectedRequest(null)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-slate-500 hover:text-slate-700"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -264,24 +286,24 @@ export default function AdminLeaveRequests() {
 
             <div className="space-y-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-slate-900">
                   {selectedRequest.employee?.firstName || ""} {selectedRequest.employee?.lastName || ""}
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-500">
                   {selectedRequest.leaveType?.name || "Unknown Leave Type"} - {selectedRequest.totalDays}{" "}
                   days
                 </p>
               </div>
 
-              <div className="flex items-center text-sm text-gray-500">
+              <div className="flex items-center text-sm text-slate-500">
                 <Calendar className="h-4 w-4 mr-1" />
                 {dayjs(selectedRequest.startDate).format("MMM D, YYYY")} -{" "}
                 {dayjs(selectedRequest.endDate).format("MMM D, YYYY")}
               </div>
 
               <div>
-                <h4 className="font-medium text-gray-900">Comments</h4>
-                <p className="mt-1 text-gray-600">
+                <h4 className="font-medium text-slate-900">Comments</h4>
+                <p className="mt-1 text-slate-600">
                   {selectedRequest.comments || "No comments provided"}
                 </p>
               </div>
@@ -289,7 +311,7 @@ export default function AdminLeaveRequests() {
               {selectedRequest.documentUrls &&
                 selectedRequest.documentUrls.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-gray-900">Attachments</h4>
+                    <h4 className="font-medium text-slate-900">Attachments</h4>
                     <ul className="mt-1 space-y-1">
                       {selectedRequest.documentUrls.map((url, index) => (
                         <li key={index}>
@@ -315,7 +337,7 @@ export default function AdminLeaveRequests() {
                         handleApprove(selectedRequest.id);
                         setSelectedRequest(null);
                       }}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
                     >
                       Approve
                     </button>
@@ -324,7 +346,7 @@ export default function AdminLeaveRequests() {
                         handleReject(selectedRequest.id);
                         setSelectedRequest(null);
                       }}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                      className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
                     >
                       Reject
                     </button>

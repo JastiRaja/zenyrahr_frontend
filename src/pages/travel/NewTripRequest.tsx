@@ -1,14 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Calendar,
-  FileText,
-  CheckCircle,
-  XCircle,
-  Trash2,
-  MapPin,
-  Briefcase,
-} from "react-feather";
+import { Calendar, FileText, Trash2, MapPin, Briefcase } from "react-feather";
 import { Plane } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext"; // Import the useAuth hook
 
@@ -159,24 +151,46 @@ export default function NewTripRequest() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">New Trip Request</h1>
-        <p className="mt-2 text-lg text-gray-600">
-          Submit a new business travel request
-        </p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h1 className="text-3xl font-bold tracking-tight">New Trip Request</h1>
+          <p className="mt-1 text-sm text-sky-50">
+            Submit a new business travel request.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 divide-y divide-slate-200 bg-white sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Destination</p>
+            <p className="mt-1 text-lg font-semibold text-slate-900">
+              {formData.destination || "Not selected"}
+            </p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Estimated Budget</p>
+            <p className="mt-1 text-lg font-semibold text-sky-700">
+              ₹{formData.budget || "0"}
+            </p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Documents</p>
+            <p className="mt-1 text-lg font-semibold text-indigo-700">
+              {formData.documents.length}
+            </p>
+          </div>
+        </div>
+      </section>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Basic Trip Information */}
-        <div className="card p-6 bg-gradient-to-br from-white to-purple-50">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">
+        <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
             Trip Details
           </h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             {/* Destination */}
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-xs font-semibold uppercase text-slate-500">
                 Destination <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
@@ -188,7 +202,7 @@ export default function NewTripRequest() {
                   name="destination"
                   value={formData.destination}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   placeholder="City, Country"
                   required
                 />
@@ -197,7 +211,7 @@ export default function NewTripRequest() {
 
             {/* Purpose of Travel */}
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-xs font-semibold uppercase text-slate-500">
                 Purpose of Travel <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
@@ -209,7 +223,7 @@ export default function NewTripRequest() {
                   name="purpose"
                   value={formData.purpose}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   placeholder="e.g., Client Meeting, Conference"
                   required
                 />
@@ -218,7 +232,7 @@ export default function NewTripRequest() {
 
             {/* Start Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-xs font-semibold uppercase text-slate-500">
                 Start Date <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
@@ -230,7 +244,7 @@ export default function NewTripRequest() {
                   name="startDate"
                   value={formData.startDate}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   required
                 />
               </div>
@@ -238,7 +252,7 @@ export default function NewTripRequest() {
 
             {/* End Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-xs font-semibold uppercase text-slate-500">
                 End Date <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
@@ -250,7 +264,7 @@ export default function NewTripRequest() {
                   name="endDate"
                   value={formData.endDate}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   required
                 />
               </div>
@@ -258,7 +272,7 @@ export default function NewTripRequest() {
 
             {/* Transportation */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-xs font-semibold uppercase text-slate-500">
                 Transportation <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
@@ -269,7 +283,7 @@ export default function NewTripRequest() {
                   name="transportation"
                   value={formData.transportation}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   required
                 >
                   <option value="">Select Transportation</option>
@@ -283,7 +297,7 @@ export default function NewTripRequest() {
 
             {/* Estimated Budget */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-xs font-semibold uppercase text-slate-500">
                 Estimated Budget <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative">
@@ -295,7 +309,7 @@ export default function NewTripRequest() {
                   name="budget"
                   value={formData.budget}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full rounded-md border border-slate-300 py-2 pl-10 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   placeholder="Enter amount"
                   required
                 />
@@ -304,7 +318,7 @@ export default function NewTripRequest() {
 
             {/* Additional Details */}
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-xs font-semibold uppercase text-slate-500">
                 Additional Details
               </label>
               <div className="mt-1">
@@ -313,7 +327,7 @@ export default function NewTripRequest() {
                   value={formData.description}
                   onChange={handleChange}
                   rows={4}
-                  className="block w-full px-3 py-2 border border-purple-200 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   placeholder="Any additional information about your trip..."
                 />
               </div>
@@ -321,14 +335,14 @@ export default function NewTripRequest() {
 
             {/* Supporting Documents */}
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Supporting Documents <span className="text-red-500">*</span>
+              <label className="block text-xs font-semibold uppercase text-slate-500">
+                Supporting Documents (Optional)
               </label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-purple-200 border-dashed rounded-md hover:border-purple-300 transition-colors duration-300">
+              <div className="mt-1 flex justify-center rounded-md border-2 border-dashed border-sky-200 px-6 pb-6 pt-5 transition-colors duration-300 hover:border-sky-300">
                 <div className="space-y-1 text-center">
-                  <FileText className="mx-auto h-12 w-12 text-purple-400" />
-                  <div className="flex text-sm text-gray-600">
-                    <label className="relative cursor-pointer bg-white rounded-md font-medium text-purple-600 hover:text-purple-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-purple-500">
+                    <FileText className="mx-auto h-12 w-12 text-sky-400" />
+                  <div className="flex text-sm text-slate-600">
+                    <label className="relative cursor-pointer rounded-md bg-white font-medium text-sky-700 hover:text-sky-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-sky-500 focus-within:ring-offset-2">
                       <span>Upload files</span>
                       <input
                         type="file"
@@ -339,7 +353,7 @@ export default function NewTripRequest() {
                     </label>
                     <p className="pl-1">or drag and drop</p>
                   </div>
-                  <p className="text-xs text-gray-500">PDF, DOC up to 10MB</p>
+                  <p className="text-xs text-slate-500">PDF, DOC up to 10MB</p>
                 </div>
               </div>
             </div>
@@ -347,25 +361,25 @@ export default function NewTripRequest() {
             {/* Files List with Remove Button */}
             {formData.documents.length > 0 && (
               <div className="sm:col-span-2">
-                <h4 className="text-sm font-medium text-gray-700">
+                <h4 className="text-sm font-medium text-slate-700">
                   Uploaded Files
                 </h4>
-                <ul className="mt-2 space-y-2 text-sm text-gray-700">
+                <ul className="mt-2 space-y-2 text-sm text-slate-700">
                   {formData.documents.map((file, index) => (
                     <li
                       key={index}
-                      className="flex items-center justify-between bg-gray-100 px-4 py-2 rounded-md"
+                      className="flex items-center justify-between bg-slate-100 px-4 py-2 rounded-xl"
                     >
-                      <span className="truncate">{file.name}</span>
+                      <span className="truncate text-sm">{file.name}</span>
                       <div className="flex items-center space-x-3">
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-slate-500">
                           ({(file.size / 1024).toFixed(2)} KB)
                         </span>
                         {/* Remove File Button */}
                         <button
                           type="button"
                           onClick={() => handleRemoveFile(index)}
-                          className="text-red-600 hover:text-red-800"
+                          className="text-rose-600 hover:text-rose-800"
                         >
                           <Trash2 className="h-5 w-5" />
                         </button>
@@ -383,13 +397,13 @@ export default function NewTripRequest() {
           <button
             type="button"
             onClick={handleCancel}
-            className="px-4 py-2 border border-purple-300 text-purple-700 rounded-md hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-300"
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 border border-transparent text-white bg-gradient-to-r from-purple-600 to-indigo-600 rounded-md hover:from-purple-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-300"
+            className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
           >
             Submit Request
           </button>

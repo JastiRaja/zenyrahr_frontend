@@ -1,5 +1,5 @@
 import { FaBriefcase } from 'react-icons/fa';
-import { DollarOutlined } from '@ant-design/icons';
+import { IndianRupeeOutlined } from '@ant-design/icons';
 
 const menuItems = [
   {
@@ -9,7 +9,7 @@ const menuItems = [
   },
   {
     title: 'Payroll',
-    icon: <DollarOutlined />,
+    icon: <IndianRupeeOutlined />,
     roles: ['HR', 'ADMIN'],
     children: [
       {
@@ -23,7 +23,7 @@ const menuItems = [
         roles: ['HR', 'ADMIN'],
       },
       {
-        title: 'Attendance',
+        title: 'Time and Attendance',
         path: '/attendance',
         roles: ['HR', 'ADMIN'],
       },

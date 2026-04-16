@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import api from "../../api/axios";
 import dayjs from "dayjs";
-import { Check, X, Search, Eye } from "lucide-react";
+import { X, Search, Eye } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
 interface LeaveBalance {
   id: number;
@@ -38,10 +36,11 @@ interface LeaveRequest {
   totalDays?: number;
   createdAt?: string;
   documentUrls?: string[]; // ✅ Add documentUrls to store uploaded document URLs
+  revocationRequested?: boolean;
 }
 
 export default function LeaveApprovals() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -71,6 +70,10 @@ export default function LeaveApprovals() {
       const processedRequests = leaveRequestsResponse.data.map(
         (request: LeaveRequest) => ({
           ...request,
+          status:
+            request.status === "APPROVED" && request.revocationRequested
+              ? "REVOCATION_PENDING"
+              : request.status,
           totalDays:
             dayjs(request.endDate).diff(dayjs(request.startDate), "day") + 1,
         })
@@ -93,16 +96,16 @@ export default function LeaveApprovals() {
   };
 
   useEffect(() => {
-    if (!user?.id || user.role?.toLowerCase() !== "hr") {
+    if (!user?.id || !hasPermission("approve", "leave")) {
       setError(
-        "Unauthorized access. Only HR can view this page."
+        "Unauthorized access. You are not allowed to approve leave requests."
       );
       return;
     }
     fetchData();
     const interval = setInterval(fetchData, 30000); // Check every 30 seconds
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, hasPermission]);
 
   // ✅ Use Effect to Remove Confirmation Message After 3 Seconds
   useEffect(() => {
@@ -139,6 +142,30 @@ export default function LeaveApprovals() {
     }
   };
 
+  const handleApproveRevoke = async (id: number) => {
+    try {
+      await api.put(`/api/leave-requests/${id}/approve-revoke`);
+      await fetchData();
+      setSelectedRequest(null);
+      setConfirmationMessage({ text: "Revocation Approved ✅", type: "approve" });
+      setTimeout(() => setConfirmationMessage(null), 3000);
+    } catch {
+      setError(`Failed to approve revocation for leave request ${id}.`);
+    }
+  };
+
+  const handleRejectRevoke = async (id: number) => {
+    try {
+      await api.put(`/api/leave-requests/${id}/reject-revoke`);
+      await fetchData();
+      setSelectedRequest(null);
+      setConfirmationMessage({ text: "Revocation Rejected ❌", type: "reject" });
+      setTimeout(() => setConfirmationMessage(null), 3000);
+    } catch {
+      setError(`Failed to reject revocation for leave request ${id}.`);
+    }
+  };
+
   const getLeaveBalancesForEmployee = (employeeId: number) => {
     return leaveBalances.filter((balance) => balance.employeeId === employeeId);
   };
@@ -163,29 +190,62 @@ export default function LeaveApprovals() {
       return false; // Skip problematic requests
     }
   });
+  const pendingCount = leaveRequests.filter((request) => request.status === "PENDING").length;
+  const revocationPendingCount = leaveRequests.filter((request) => request.status === "REVOCATION_PENDING").length;
+  const approvedCount = leaveRequests.filter((request) => request.status === "APPROVED").length;
+  const rejectedCount = leaveRequests.filter((request) => request.status === "REJECTED").length;
+  const getStatusClass = (status: string) => {
+    if (status === "APPROVED") return "text-emerald-700 bg-emerald-50";
+    if (status === "PENDING") return "text-amber-700 bg-amber-50";
+    if (status === "REVOCATION_PENDING") return "text-violet-700 bg-violet-50";
+    if (status === "WITHDRAWN") return "text-slate-700 bg-slate-100";
+    return "text-rose-700 bg-rose-50";
+  };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Leave Approvals</h1>
-        <p className="mt-2 text-gray-600">Review and manage leave requests.</p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h1 className="text-3xl font-bold tracking-tight">Leave Approvals</h1>
+          <p className="mt-1 text-sm text-sky-50">Review and manage team leave requests.</p>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-5 lg:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Total Requests</p>
+            <p className="mt-1 text-xl font-bold text-slate-900">{leaveRequests.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Pending</p>
+            <p className="mt-1 text-xl font-bold text-amber-700">{pendingCount}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Revoke Pending</p>
+            <p className="mt-1 text-xl font-bold text-violet-700">{revocationPendingCount}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Approved</p>
+            <p className="mt-1 text-xl font-bold text-emerald-700">{approvedCount}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Rejected</p>
+            <p className="mt-1 text-xl font-bold text-rose-700">{rejectedCount}</p>
+          </div>
+        </div>
+      </section>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        {/* Search Input */}
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input
             type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+            className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
             placeholder="Search employee..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        {/* Filter Dropdown */}
         <div className="flex gap-3">
           <select
             value={filterStatus}
@@ -193,73 +253,63 @@ export default function LeaveApprovals() {
               setFilterStatus(e.target.value);
               setSelectedRequest(null); // Clear selected request when changing filter
             }}
-            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 sm:text-sm rounded-md"
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
           >
             <option value="all">All Status</option>
             <option value="PENDING">Pending</option>
+            <option value="REVOCATION_PENDING">Revocation Pending</option>
             <option value="APPROVED">Approved</option>
             <option value="REJECTED">Rejected</option>
             <option value="WITHDRAWN">Withdrawn</option>
           </select>
         </div>
       </div>
+      </section>
 
-      {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
         </div>
       )}
 
-      {/* Error State */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      {/* Leave Requests Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {!loading && filteredRequests.length === 0 ? (
-          <div className="col-span-full text-center py-8 text-gray-500">
+          <div className="col-span-full py-10 text-center text-sm text-slate-500">
             No leave requests found
           </div>
         ) : (
           filteredRequests.map((request) => (
             <div
               key={request.id}
-              className="p-5 rounded-lg shadow-md border bg-white cursor-pointer hover:shadow-lg"
+              className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 p-4 hover:shadow-sm"
               onClick={() => setSelectedRequest(request)}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-md font-semibold text-gray-900">
+                <h3 className="text-sm font-semibold text-slate-900">
                   {request.employee?.firstName} {request.employee?.lastName}
                 </h3>
-                <Eye className="h-5 w-5 text-gray-600" />
+                <Eye className="h-4 w-4 text-slate-500" />
               </div>
 
               <div className="mt-2">
-                <p className="text-sm text-gray-600">
+                <p className="text-xs font-medium text-slate-600">
                   {request.leaveType?.name || "Unknown Leave Type"}
                 </p>
-                <div className="text-sm text-gray-500 mt-1">
+                <div className="mt-1 text-xs text-slate-500">
                   📅 {dayjs(request.startDate).format("YYYY-MM-DD")} →{" "}
                   {dayjs(request.endDate).format("YYYY-MM-DD")}
                 </div>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm font-medium text-slate-700">
                   🕒 {request.totalDays} days
                 </p>
-                <p
-                  className={`mt-2 text-sm font-semibold ${
-                    request.status === "APPROVED"
-                      ? "text-green-600"
-                      : request.status === "PENDING"
-                      ? "text-yellow-600"
-                      : request.status === "WITHDRAWN"
-                      ? "text-blue-600"
-                      : "text-red-600"
-                  }`}
-                >
+                <p className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusClass(request.status)}`}>
                   {request.status}
                 </p>
               </div>
@@ -267,94 +317,79 @@ export default function LeaveApprovals() {
           ))
         )}
       </div>
+      </section>
 
-      {/* Expanded View (Popup) */}
       {selectedRequest && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full relative">
+        <div className="fixed inset-0 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-2xl rounded-md border border-slate-200 bg-white p-6 shadow-xl">
             <button
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+              className="absolute top-3 right-3 text-slate-500 hover:text-slate-700"
               onClick={() => setSelectedRequest(null)}
             >
               <X className="h-6 w-6" />
             </button>
 
             <div className="space-y-4">
-              {/* Employee Details */}
               <div>
-                <h3 className="text-xl font-bold text-gray-900">
+                <h3 className="text-xl font-bold text-slate-900">
                   {selectedRequest.employee?.firstName}{" "}
                   {selectedRequest.employee?.lastName}
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-500">
                   {selectedRequest.employee?.department ||
                     "No department specified"}
                 </p>
               </div>
 
-              {/* Leave Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-medium text-gray-900">Leave Type</h4>
-                  <p className="text-gray-600">
+                  <h4 className="font-medium text-slate-900">Leave Type</h4>
+                  <p className="text-slate-600">
                     {selectedRequest.leaveType?.name}
                   </p>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900">Duration</h4>
-                  <p className="text-gray-600">
+                  <h4 className="font-medium text-slate-900">Duration</h4>
+                  <p className="text-slate-600">
                     {selectedRequest.totalDays} days
                   </p>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900">Start Date</h4>
-                  <p className="text-gray-600">
+                  <h4 className="font-medium text-slate-900">Start Date</h4>
+                  <p className="text-slate-600">
                     {dayjs(selectedRequest.startDate).format("YYYY-MM-DD")}
                   </p>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900">End Date</h4>
-                  <p className="text-gray-600">
+                  <h4 className="font-medium text-slate-900">End Date</h4>
+                  <p className="text-slate-600">
                     {dayjs(selectedRequest.endDate).format("YYYY-MM-DD")}
                   </p>
                 </div>
               </div>
 
-              {/* Status */}
               <div>
-                <h4 className="font-medium text-gray-900">Status</h4>
-                <p
-                  className={`text-sm font-semibold ${
-                    selectedRequest.status === "APPROVED"
-                      ? "text-green-600"
-                      : selectedRequest.status === "PENDING"
-                      ? "text-yellow-600"
-                      : selectedRequest.status === "WITHDRAWN"
-                      ? "text-blue-600"
-                      : "text-red-600"
-                  }`}
-                >
+                <h4 className="font-medium text-slate-900">Status</h4>
+                <p className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusClass(selectedRequest.status)}`}>
                   {selectedRequest.status}
                 </p>
               </div>
 
-              {/* Comments */}
               <div>
-                <h4 className="font-medium text-gray-900">Comments</h4>
-                <p className="mt-1 text-gray-600 whitespace-pre-wrap">
+                <h4 className="font-medium text-slate-900">Comments</h4>
+                <p className="mt-1 text-slate-600 whitespace-pre-wrap">
                   {selectedRequest.comments || "No comments provided"}
                 </p>
               </div>
 
-              {/* Leave Balances */}
               {selectedRequest.employee?.leaveBalances && (
                 <div>
-                  <h4 className="font-medium text-gray-900">Leave Balances</h4>
+                  <h4 className="font-medium text-slate-900">Leave Balances</h4>
                   <ul className="mt-1 space-y-1">
                     {getLeaveBalancesForEmployee(
                       selectedRequest.employee.id
                     ).map((balance) => (
-                      <li key={balance.id} className="text-gray-600">
+                      <li key={balance.id} className="text-slate-600">
                         {balance.leaveTypeName}: {balance.balance} days
                       </li>
                     ))}
@@ -362,11 +397,10 @@ export default function LeaveApprovals() {
                 </div>
               )}
 
-              {/* Attachments */}
               {selectedRequest.documentUrls &&
                 selectedRequest.documentUrls.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-gray-900">Attachments</h4>
+                    <h4 className="font-medium text-slate-900">Attachments</h4>
                     <ul className="mt-1 space-y-1">
                       {selectedRequest.documentUrls.map((url, index) => (
                         <li key={index}>
@@ -384,20 +418,35 @@ export default function LeaveApprovals() {
                   </div>
                 )}
 
-              {/* Action Buttons */}
               {selectedRequest.status === "PENDING" && (
                 <div className="flex justify-end space-x-3 mt-4">
                   <button
                     onClick={() => handleApprove(selectedRequest.id)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
                   >
                     Approve
                   </button>
                   <button
                     onClick={() => handleReject(selectedRequest.id)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
                   >
                     Reject
+                  </button>
+                </div>
+              )}
+              {selectedRequest.status === "REVOCATION_PENDING" && (
+                <div className="flex justify-end space-x-3 mt-4">
+                  <button
+                    onClick={() => handleApproveRevoke(selectedRequest.id)}
+                    className="rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+                  >
+                    Approve Revoke
+                  </button>
+                  <button
+                    onClick={() => handleRejectRevoke(selectedRequest.id)}
+                    className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
+                  >
+                    Reject Revoke
                   </button>
                 </div>
               )}
@@ -406,10 +455,9 @@ export default function LeaveApprovals() {
         </div>
       )}
 
-      {/* ✅ Show Confirmation Popup (Green for Approve, Red for Reject) */}
       {confirmationMessage && (
         <div
-          className={`fixed top-5 right-5 px-4 py-2 rounded-lg shadow-md ${
+          className={`fixed right-5 top-5 rounded-md px-4 py-2 text-sm font-medium text-white shadow-md ${
             confirmationMessage.type === "approve"
               ? "bg-green-500"
               : "bg-red-500"

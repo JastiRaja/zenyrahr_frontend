@@ -2,9 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { KeyRound } from "lucide-react";
 import { motion } from "framer-motion";
-import logo from "../assets/logo1.png";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
 export default function VerifyOTP() {
   const navigate = useNavigate();
@@ -51,11 +48,11 @@ export default function VerifyOTP() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-200">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+    <div className="auth-shell">
+      <div className="w-full max-w-md rounded-3xl border border-white bg-white/90 p-8 shadow-2xl">
         <div className="flex justify-center mb-6">
           <motion.div
-            className="p-3 rounded-full bg-indigo-600"
+            className="p-3 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -63,7 +60,10 @@ export default function VerifyOTP() {
           </motion.div>
         </div>
 
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-2">
+        <p className="text-center text-sm font-semibold uppercase tracking-wide text-indigo-600">
+          ZenyraHR
+        </p>
+        <h2 className="mb-2 mt-1 text-3xl font-bold text-center text-gray-900">
           Verify OTP
         </h2>
         <p className="text-center text-sm text-gray-600 mb-6">
@@ -93,7 +93,7 @@ export default function VerifyOTP() {
               type="text"
               required
               maxLength={4}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="input-control mt-1"
               placeholder="Enter 4-digit OTP"
               value={otp}
               onChange={handleChange}
@@ -103,7 +103,7 @@ export default function VerifyOTP() {
           <motion.button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
+            className="btn-primary w-full"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

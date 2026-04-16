@@ -33,6 +33,20 @@ const getStatusColor = (status: string | undefined) => {
   }
 };
 
+const getStatusBadgeClass = (status: string | undefined) => {
+  if (!status) return "bg-slate-100 text-slate-700";
+  switch (status.toLowerCase()) {
+    case "approved":
+      return "bg-emerald-50 text-emerald-700";
+    case "pending":
+      return "bg-amber-50 text-amber-700";
+    case "rejected":
+      return "bg-rose-50 text-rose-700";
+    default:
+      return "bg-sky-50 text-sky-700";
+  }
+};
+
 export default function Travel() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -124,6 +138,11 @@ export default function Travel() {
     (sum, expense) => sum + (expense.amount || 0),
     0
   );
+  const pendingTrips = trips.filter(
+    (trip) =>
+      trip.firstLevelApprovalStatus === "PENDING" ||
+      trip.secondLevelApprovalStatus === "PENDING"
+  ).length;
 
   const handleSubmitExpense = () => {
     navigate("/travel/submit-expense");
@@ -220,71 +239,96 @@ export default function Travel() {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className="text-slate-600">Loading...</div>;
   }
 
   return (
-    <div className="space-y-8">
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Travel & Expense</h1>
-          <p className="mt-2 text-lg text-gray-600">
-            Manage your business trips and expenses
-          </p>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Travel & Expense</h1>
+              <p className="mt-1 text-sm text-sky-50">
+                Manage your business trips and expense reports.
+              </p>
+            </div>
+            <div className="mt-2 space-x-3 sm:mt-0">
+              <button
+                onClick={handleSubmitExpense}
+                className="inline-flex items-center rounded-md border border-white/70 bg-transparent px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+              >
+                <Receipt className="mr-2 h-4 w-4" />
+                Submit Expense
+              </button>
+              <button
+                onClick={handleNewTripRequest}
+                className="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                New Trip Request
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="mt-4 sm:mt-0 space-x-3">
-          <button
-            onClick={handleSubmitExpense}
-            className="btn-secondary inline-flex items-center"
-          >
-            <Receipt className="h-4 w-4 mr-2" />
-            Submit Expense
-          </button>
-          <button
-            onClick={handleNewTripRequest}
-            className="btn-primary inline-flex items-center"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Trip Request
-          </button>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Trip Requests</p>
+            <p className="mt-1 text-xl font-bold text-slate-900">{trips.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Pending Trips</p>
+            <p className="mt-1 text-xl font-bold text-amber-700">{pendingTrips}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Expenses</p>
+            <p className="mt-1 text-xl font-bold text-indigo-700">{expenses.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Total Amount</p>
+            <p className="mt-1 text-xl font-bold text-sky-700">₹{totalExpenses.toFixed(2)}</p>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Upcoming & Recent Trips */}
-      <div className="card">
-        <div className="p-6 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">Trip Requests</h2>
+      <div className="rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="border-b border-slate-200 p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Trip Requests</h2>
         </div>
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-slate-200/70">
           {trips.length > 0 ? (
             trips.map((trip) => (
               <div
                 key={trip.id}
-                className="p-6 hover:bg-gray-50 transition-colors duration-200"
+                className="p-4 transition-colors duration-200 hover:bg-slate-50"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center">
-                      <MapPin className="h-5 w-5 text-gray-400 mr-2" />
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <MapPin className="h-5 w-5 text-slate-400 mr-2" />
+                      <h3 className="text-lg font-semibold text-slate-900">
                         {trip.destination}
                       </h3>
+                      <span className={`ml-3 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusBadgeClass(trip.firstLevelApprovalStatus)}`}>
+                        {trip.firstLevelApprovalStatus || "PENDING"}
+                      </span>
                     </div>
-                    <p className="mt-1 text-sm text-gray-500">{trip.purpose}</p>
+                    <p className="mt-1 text-sm text-slate-500">{trip.purpose}</p>
                     <div className="mt-4 flex flex-wrap gap-4">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                      <div className="flex items-center text-sm text-slate-500">
+                        <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
                         {trip.startDate} - {trip.endDate}
                       </div>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <IndianRupee className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
+                      <div className="flex items-center text-sm text-slate-500">
+                        <IndianRupee className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
                         Budget: {trip.budget}
                       </div>
                     </div>
                   </div>
                   <button
                     onClick={() => viewTripDetails(trip)}
-                    className="btn-secondary text-sm"
+                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
                   >
                     View
                   </button>
@@ -292,21 +336,21 @@ export default function Travel() {
               </div>
             ))
           ) : (
-            <div className="text-center text-gray-500">No trips available</div>
+            <div className="text-center text-slate-500 py-6">No trips available</div>
           )}
         </div>
       </div>
 
       {/* Recent Expenses */}
-      <div className="card">
-        <div className="p-6 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="border-b border-slate-200 p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             Recent Expenses
           </h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50/80">
               <tr>
                 <th
                   scope="col"
@@ -355,27 +399,27 @@ export default function Travel() {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-slate-200/70">
               {expenses.map((expense) => (
-                <tr key={expense.id} className="hover:bg-gray-50">
+                <tr key={expense.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="p-2 rounded-lg bg-indigo-50">
                         <Plane className="h-5 w-5 text-indigo-600" />
                       </div>
-                      <span className="ml-3 text-sm font-medium text-gray-900">
+                      <span className="ml-3 text-sm font-medium text-slate-900">
                         {expense.category}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{expense.employee?.name}</div>
-                    <div className="text-sm text-gray-500">{expense.employee?.department}</div>
+                    <div className="text-sm text-slate-900">{expense.employee?.name}</div>
+                    <div className="text-sm text-slate-500">{expense.employee?.department}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                     ₹{expense.amount}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                     {dayjs(expense.date).format('MMM D, YYYY')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -384,20 +428,12 @@ export default function Travel() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span
-                      className={`font-medium ${getStatusColor(
-                        expense.firstLevelApprovalStatus
-                      )}`}
-                    >
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusBadgeClass(expense.firstLevelApprovalStatus)}`}>
                       {expense.firstLevelApprovalStatus}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span
-                      className={`font-medium ${getStatusColor(
-                        expense.secondLevelApprovalStatus
-                      )}`}
-                    >
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusBadgeClass(expense.secondLevelApprovalStatus)}`}>
                       {expense.secondLevelApprovalStatus}
                     </span>
                   </td>
@@ -418,14 +454,14 @@ export default function Travel() {
 
       {/* Trip Detail Modal */}
       {selectedTrip && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl relative max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-lg">
-              <h3 className="text-xl font-bold text-gray-900">
+        <div className="fixed inset-0 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl relative max-h-[90vh] flex flex-col border border-slate-200/80">
+            <div className="p-6 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-2xl">
+              <h3 className="text-xl font-bold text-slate-900">
                 Trip to {selectedTrip.destination}
               </h3>
               <button
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-slate-500 hover:text-slate-700 transition-colors"
                 onClick={closeTripModal}
               >
                 <X className="h-6 w-6" />
@@ -434,11 +470,11 @@ export default function Travel() {
 
             {/* Employee Details Block */}
             <div className="px-6 pt-4">
-              <div className="p-4 border rounded-md bg-indigo-50 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div className="p-4 border border-indigo-100 rounded-xl bg-indigo-50 flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <strong className="text-gray-900 block">Requested By:</strong>
-                  <span className="text-gray-800 text-lg font-medium">{selectedTrip.employee?.name || 'N/A'}</span>
-                  <div className="text-gray-600 text-sm mt-1">
+                  <strong className="text-slate-900 block">Requested By:</strong>
+                  <span className="text-slate-800 text-lg font-medium">{selectedTrip.employee?.name || 'N/A'}</span>
+                  <div className="text-slate-600 text-sm mt-1">
                     {selectedTrip.employee?.department ? `${selectedTrip.employee.department}` : ''}
                     {selectedTrip.employee?.role ? ` • ${selectedTrip.employee.role}` : ''}
                   </div>
@@ -448,38 +484,38 @@ export default function Travel() {
 
             <div className="p-6 overflow-y-auto flex-1">
               <div className="space-y-4">
-                <div className="p-4 border rounded-md bg-gray-50">
-                  <strong className="text-gray-900 block">Travel Dates:</strong>
-                  <p className="text-gray-600 mt-1">
+                <div className="p-4 border border-slate-200 rounded-xl bg-slate-50">
+                  <strong className="text-slate-900 block">Travel Dates:</strong>
+                  <p className="text-slate-600 mt-1">
                     {dayjs(selectedTrip.startDate).format("YYYY-MM-DD")} -{" "}
                     {dayjs(selectedTrip.endDate).format("YYYY-MM-DD")}
                   </p>
                 </div>
 
-                <div className="p-4 border rounded-md bg-gray-50">
-                  <strong className="text-gray-900 block">Purpose:</strong>
-                  <p className="text-gray-600 mt-1">
+                <div className="p-4 border border-slate-200 rounded-xl bg-slate-50">
+                  <strong className="text-slate-900 block">Purpose:</strong>
+                  <p className="text-slate-600 mt-1">
                     {selectedTrip.purpose || "No purpose specified"}
                   </p>
                 </div>
-                <div className="p-4 border rounded-md bg-gray-50">
-                  <strong className="text-gray-900 block">Transportation:</strong>
-                  <p className="text-gray-600 mt-1">
+                <div className="p-4 border border-slate-200 rounded-xl bg-slate-50">
+                  <strong className="text-slate-900 block">Transportation:</strong>
+                  <p className="text-slate-600 mt-1">
                     {selectedTrip.transportation || "No transportation specified"}
                   </p>
                 </div>
-                <div className="p-4 border rounded-md bg-gray-50">
-                  <strong className="text-gray-900 block">
+                <div className="p-4 border border-slate-200 rounded-xl bg-slate-50">
+                  <strong className="text-slate-900 block">
                     Additional Details:
                   </strong>
-                  <p className="text-gray-600 mt-1">
+                  <p className="text-slate-600 mt-1">
                     {selectedTrip.description || "No additional details provided"}
                   </p>
                 </div>
 
-                <div className="p-4 border rounded-md bg-gray-50">
-                  <strong className="text-gray-900 block">Budget:</strong>
-                  <p className="text-gray-600 mt-1">
+                <div className="p-4 border border-slate-200 rounded-xl bg-slate-50">
+                  <strong className="text-slate-900 block">Budget:</strong>
+                  <p className="text-slate-600 mt-1">
                     ₹{selectedTrip.budget || "0"}
                   </p>
                 </div>

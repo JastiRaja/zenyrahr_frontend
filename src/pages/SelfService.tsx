@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   UserCircle,
   Mail,
@@ -10,13 +10,26 @@ import {
   FileText,
   Wrench,
 } from "lucide-react";
-import api from '../api/axios';
+import api from "../api/axios";
+import { useAuth } from "../contexts/AuthContext";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
+type OrganizationMenuSettings = {
+  timesheetEnabled: boolean;
+  leaveManagementEnabled: boolean;
+};
+
+const defaultMenuSettings: OrganizationMenuSettings = {
+  timesheetEnabled: true,
+  leaveManagementEnabled: true,
+};
 
 export default function SelfService() {
   const { id } = useParams<string>(); // Get the employee ID from the URL if present
   const navigate = useNavigate();
+  const { user, hasPermission } = useAuth();
+  const isMainAdmin = (user?.role || "").toLowerCase() === "admin";
+  const [menuSettings, setMenuSettings] =
+    useState<OrganizationMenuSettings>(defaultMenuSettings);
   const [personalInfo, setPersonalInfo] = useState({
     name: "",
     email: "",
@@ -27,17 +40,39 @@ export default function SelfService() {
   });
 
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isMainAdmin || !user) {
+      setMenuSettings(defaultMenuSettings);
+      return;
+    }
+    let cancelled = false;
+    const loadMenuSettings = async () => {
+      try {
+        const response = await api.get("/api/organizations/current/menu-settings");
+        if (cancelled) return;
+        setMenuSettings({
+          timesheetEnabled: response.data?.timesheetEnabled !== false,
+          leaveManagementEnabled: response.data?.leaveManagementEnabled !== false,
+        });
+      } catch {
+        if (!cancelled) setMenuSettings(defaultMenuSettings);
+      }
+    };
+    void loadMenuSettings();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, user?.role, isMainAdmin]);
 
   useEffect(() => {
     const fetchPersonalInfo = async (employeeId: string) => {
-      // // console.log("Fetching for ID:", employeeId);
       try {
+        setLoading(true);
+        setError(null);
         const response = await api.get(`/auth/employees/${employeeId}`);
-        // const text = await response.data;
         const data = response.data;
-        // // console.log("Raw Response:", text);
-        // const data = JSON.parse(text);
-        // // console.log("Parsed Data:", data);
         setPersonalInfo({
           name: `${data.firstName} ${data.lastName}`,
           email: data.username,
@@ -51,6 +86,8 @@ export default function SelfService() {
         setError(
           "Unable to fetch personal information. Please try again later."
         );
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -72,110 +109,154 @@ export default function SelfService() {
         } catch (error) {
           setError("Failed to parse user data. Please log in again.");
           console.error("Error parsing user data:", error);
+          setLoading(false);
         }
       } else {
         setError("No user data found. Please log in again.");
+        setLoading(false);
       }
     }
   }, [id]);
 
-  const quickActions = [
-    { name: "Apply for Leave", icon: Calendar, href: "/leave/request" },
-    { name: "Submit Timesheet", icon: FileText, href: "/timesheet/submit" },
-    { name: "Service Request", icon: Wrench, href: "/service-request" }, // Updated action
+  type QuickAction = { name: string; icon: typeof Calendar; href: string };
+
+  const selfQuickActions = useMemo((): QuickAction[] => {
+    const items: QuickAction[] = [];
+    if (menuSettings.leaveManagementEnabled && hasPermission("submit", "leave")) {
+      items.push({ name: "Apply for Leave", icon: Calendar, href: "/leave/request" });
+    }
+    if (menuSettings.timesheetEnabled && hasPermission("submit", "timesheet")) {
+      items.push({ name: "Submit Timesheet", icon: FileText, href: "/timesheet/submit" });
+    }
+    items.push({ name: "Service Request", icon: Wrench, href: "/service-request" });
+    return items;
+  }, [
+    menuSettings.timesheetEnabled,
+    menuSettings.leaveManagementEnabled,
+    hasPermission,
+  ]);
+  const infoRows = [
+    { label: "Employee", value: personalInfo.name, icon: UserCircle },
+    { label: "Email", value: personalInfo.email, icon: Mail },
+    { label: "Phone", value: personalInfo.phone, icon: Phone },
+    { label: "Address", value: personalInfo.address, icon: MapPin },
+    { label: "Department", value: personalInfo.department, icon: Building },
+    { label: "Join Date", value: personalInfo.joinDate, icon: Calendar },
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Self Service Portal
-          </h1>
-          <p className="mt-2 text-lg text-gray-600">
+    <div className="space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h1 className="text-3xl font-bold tracking-tight">Self Service Portal</h1>
+          <p className="mt-1 text-sm text-sky-50">
             {id
-              ? "Viewing Employee's Self Service Page"
-              : "Access and manage your personal information and requests"}
+              ? "Viewing employee profile and basic information."
+              : "Access and manage your personal information and requests."}
           </p>
         </div>
-      </div>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Profile Name</p>
+            <p className="mt-1 truncate text-lg font-semibold text-slate-900">
+              {personalInfo.name || "Loading..."}
+            </p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Department</p>
+            <p className="mt-1 truncate text-lg font-semibold text-slate-900">
+              {personalInfo.department || "--"}
+            </p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Join Date</p>
+            <p className="mt-1 truncate text-lg font-semibold text-slate-900">
+              {personalInfo.joinDate || "--"}
+            </p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Access Type</p>
+            <p className="mt-1 truncate text-lg font-semibold text-slate-900">
+              {id ? "Manager View" : "Self View"}
+            </p>
+          </div>
+        </div>
+      </section>
 
       {error && (
-        <div className="bg-red-50 p-4 rounded-lg border border-red-200 text-red-700">
+        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
           {error}
         </div>
       )}
 
-      {!error && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Personal Information Card */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Personal Information
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <UserCircle className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-gray-900">{personalInfo.name}</span>
-              </div>
-              <div className="flex items-center">
-                <Mail className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-gray-900">{personalInfo.email}</span>
-              </div>
-              <div className="flex items-center">
-                <Phone className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-gray-900">{personalInfo.phone}</span>
-              </div>
-              <div className="flex items-center">
-                <MapPin className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-gray-900">{personalInfo.address}</span>
-              </div>
-              <div className="flex items-center">
-                <Building className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-gray-900">{personalInfo.department}</span>
-              </div>
-              <div className="flex items-center">
-                <Calendar className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-gray-900">{personalInfo.joinDate}</span>
-              </div>
+      {!error && !loading && (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <section className="rounded-md border border-slate-300 bg-white p-5 shadow-sm xl:col-span-2">
+            <h2 className="mb-4 text-xl font-semibold text-slate-900">Personal Information</h2>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {infoRows.map((row) => {
+                const Icon = row.icon;
+                return (
+                  <div
+                    key={row.label}
+                    className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-3"
+                  >
+                    <div className="rounded-md bg-white p-2">
+                      <Icon className="h-4 w-4 text-sky-700" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs uppercase text-slate-500">{row.label}</p>
+                      <p className="truncate text-sm font-medium text-slate-800">{row.value}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Edit Information Button - Visible Only for Logged-In User */}
             {!id && (
               <button
-                className="mt-6 w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="mt-5 inline-flex w-full items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 onClick={() => navigate("/UpdateEmployee")}
               >
                 Edit Information
               </button>
             )}
-          </div>
+          </section>
 
-          {/* Quick Actions Grid - Displayed Only for Logged-In User */}
-          {!id && (
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
-                Quick Actions
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                {quickActions.map((action) => {
+          <section className="rounded-md border border-slate-300 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-xl font-semibold text-slate-900">Quick Actions</h2>
+            {!id ? (
+              <div className="grid grid-cols-1 gap-3">
+                {selfQuickActions.map((action) => {
                   const Icon = action.icon;
                   return (
-                    <a
+                    <Link
                       key={action.name}
-                      href={action.href}
-                      className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                      to={action.href}
+                      className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 transition hover:border-sky-300 hover:bg-sky-50"
                     >
-                      <Icon className="h-6 w-6 text-indigo-600" />
-                      <span className="mt-2 text-sm font-medium text-gray-900">
+                      <div className="rounded-md bg-white p-2">
+                        <Icon className="h-4 w-4 text-sky-700" />
+                      </div>
+                      <span className="text-sm font-semibold text-slate-800">
                         {action.name}
                       </span>
-                    </a>
+                    </Link>
                   );
                 })}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500">
+                Quick actions are available only in self view.
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {loading && !error && (
+        <div className="rounded-md border border-slate-300 bg-white p-5 text-sm text-slate-600 shadow-sm">
+          Loading self service details...
         </div>
       )}
     </div>

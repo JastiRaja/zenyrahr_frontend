@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
 import {
   ArrowLeft,
@@ -10,8 +9,7 @@ import {
   AlertCircle,
   Paperclip,
 } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
+import api from "../api/axios";
 
 interface ServiceRequest {
   id: number;
@@ -41,9 +39,7 @@ export default function AdminServiceRequestDetail() {
 
     const fetchServiceRequest = async () => {
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}/api/service-ticket/${id}`
-        );
+        const response = await api.get(`/api/service-ticket/${id}`);
         setServiceRequest(response.data);
       } catch (error) {
         console.error("Error fetching service request:", error);

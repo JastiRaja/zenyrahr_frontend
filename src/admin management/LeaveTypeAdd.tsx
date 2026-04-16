@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { Pencil, Save, Plus, Trash, X, Check } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
+import { Pencil, Plus, Trash, X, Check } from "lucide-react";
+import CommonDialog from "../components/CommonDialog";
+import api from "../api/axios";
 
 interface LeaveType {
   id: number;
@@ -21,6 +20,7 @@ export default function LeaveTypes() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editedLeaveType, setEditedLeaveType] = useState<string>("");
   const [editedDefaultBalance, setEditedDefaultBalance] = useState<number>(0);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchLeaveTypes();
@@ -31,7 +31,7 @@ export default function LeaveTypes() {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/leave-types`);
+      const response = await api.get(`/api/leave-types`);
       setLeaveTypes(response.data);
     } catch (err) {
       console.error("❌ Error fetching leave types:", err);
@@ -51,8 +51,8 @@ export default function LeaveTypes() {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/leave-types`,
+      const response = await api.post(
+        `/api/leave-types`,
         { name: newLeaveType, defaultBalance },
         { headers: { "Content-Type": "application/json" } }
       );
@@ -85,8 +85,8 @@ export default function LeaveTypes() {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.put(
-        `${API_BASE_URL}/api/leave-types/${id}`,
+      const response = await api.put(
+        `/api/leave-types/${id}`,
         { name: editedLeaveType, defaultBalance: editedDefaultBalance },
         { headers: { "Content-Type": "application/json" } }
       );
@@ -106,13 +106,10 @@ export default function LeaveTypes() {
 
   // **Delete Leave Type**
   const deleteLeaveType = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this leave type?"))
-      return;
-
     setLoading(true);
     setError("");
     try {
-      await axios.delete(`${API_BASE_URL}/api/leave-types/${id}`);
+      await api.delete(`/api/leave-types/${id}`);
       setLeaveTypes(leaveTypes.filter((type) => type.id !== id));
     } catch (err) {
       console.error("❌ Error deleting leave type:", err);
@@ -123,27 +120,43 @@ export default function LeaveTypes() {
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">
-        Manage Leave Types
-      </h1>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h1 className="text-3xl font-bold tracking-tight">Manage Leave Types</h1>
+          <p className="mt-1 text-sm text-sky-50">Add, update, and remove leave categories.</p>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white sm:grid-cols-3 sm:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Leave Types</p>
+            <p className="mt-1 text-xl font-bold text-slate-900">{leaveTypes.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Edit Mode</p>
+            <p className="mt-1 text-xl font-bold text-sky-700">{editingId ? "On" : "Off"}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Loading</p>
+            <p className="mt-1 text-xl font-bold text-indigo-700">{loading ? "Yes" : "No"}</p>
+          </div>
+        </div>
+      </section>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      {/* Add Leave Type Form */}
-      <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Add New Leave Type</h2>
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Add New Leave Type</h2>
         <div className="grid grid-cols-3 gap-4">
           <input
             type="text"
             placeholder="Leave Type Name"
             value={newLeaveType}
             onChange={(e) => setNewLeaveType(e.target.value)}
-            className="input-search"
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
             disabled={loading}
           />
           <input
@@ -151,12 +164,12 @@ export default function LeaveTypes() {
             placeholder="Default Balance (Days)"
             value={defaultBalance}
             onChange={(e) => setDefaultBalance(Number(e.target.value))}
-            className="input-search"
+            className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
             disabled={loading}
           />
           <button
             onClick={addLeaveType}
-            className="btn-primary flex items-center"
+            className="inline-flex items-center rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50"
             disabled={loading}
           >
             {loading ? (
@@ -168,35 +181,33 @@ export default function LeaveTypes() {
             )}
           </button>
         </div>
-      </div>
+      </section>
 
-      {/* Leave Types List */}
-      <div className="card bg-white shadow-md rounded-lg">
-        <div className="p-4 border-b border-gray-200 flex justify-between">
-          <h2 className="text-lg font-semibold">Existing Leave Types</h2>
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="flex justify-between border-b border-slate-200 p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Existing Leave Types</h2>
         </div>
 
-        <div className="divide-y divide-gray-200">
+        <div className="divide-y divide-slate-200">
           {loading ? (
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
             </div>
           ) : leaveTypes.length === 0 ? (
-            <p className="p-6 text-gray-500">No leave types available.</p>
+            <p className="p-6 text-sm text-slate-500">No leave types available.</p>
           ) : (
             leaveTypes.map((type) => (
               <div
                 key={type.id}
-                className="p-6 flex justify-between items-center"
+                className="flex items-center justify-between p-4"
               >
                 {editingId === type.id ? (
-                  // **Edit Mode**
                   <div className="flex gap-2">
                     <input
                       type="text"
                       value={editedLeaveType}
                       onChange={(e) => setEditedLeaveType(e.target.value)}
-                      className="input-search"
+                      className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                       disabled={loading}
                     />
                     <input
@@ -205,7 +216,7 @@ export default function LeaveTypes() {
                       onChange={(e) =>
                         setEditedDefaultBalance(Number(e.target.value))
                       }
-                      className="input-search"
+                      className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                       disabled={loading}
                     />
                     <button
@@ -224,9 +235,8 @@ export default function LeaveTypes() {
                     </button>
                   </div>
                 ) : (
-                  // **Normal Display Mode**
                   <div className="flex justify-between items-center w-full">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-sm font-semibold text-slate-900">
                       {type.name} - {type.defaultBalance} days
                     </h3>
                     <div className="flex gap-2">
@@ -238,7 +248,7 @@ export default function LeaveTypes() {
                         <Pencil className="h-5 w-5" />
                       </button>
                       <button
-                        onClick={() => deleteLeaveType(type.id)}
+                        onClick={() => setDeleteTargetId(type.id)}
                         className="p-2 rounded-full shadow-sm bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
                         disabled={loading}
                       >
@@ -251,7 +261,22 @@ export default function LeaveTypes() {
             ))
           )}
         </div>
-      </div>
+      </section>
+
+      <CommonDialog
+        isOpen={deleteTargetId !== null}
+        title="Delete Leave Type"
+        message="Are you sure you want to delete this leave type?"
+        tone="error"
+        confirmText="Delete"
+        onConfirm={() => {
+          if (deleteTargetId !== null) {
+            deleteLeaveType(deleteTargetId);
+            setDeleteTargetId(null);
+          }
+        }}
+        onClose={() => setDeleteTargetId(null)}
+      />
     </div>
   );
 }

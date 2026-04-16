@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar } from "lucide-react";
-import axios from "axios";
 import { useAuth } from "../../contexts/AuthContext";
 import LeaveSummary from "./LeaveSummary"; // ✅ Import Leave Summary
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
+import api from "../../api/axios";
 
 interface LeaveType {
   id: number;
@@ -30,7 +27,7 @@ export default function RequestLeave() {
   useEffect(() => {
     const fetchLeaveTypes = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/leave-types`);
+        const response = await api.get(`/api/leave-types`);
         setLeaveTypes(response.data);
       } catch (err) {
         console.error("❌ Error fetching leave types:", err);
@@ -68,14 +65,14 @@ export default function RequestLeave() {
     });
 
     // ✅ Debugging: Log FormData before sending
-    for (let [key, value] of formDataPayload.entries()) {
+    for (const [key, value] of formDataPayload.entries()) {
       // console.log(`${key}:`, value);
     }
 
     try {
       // ✅ Submit leave request with file uploads
-      const response = await axios.post(
-        `${API_BASE_URL}/api/leave-requests`,
+      const response = await api.post(
+        `/api/leave-requests`,
         formDataPayload,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -88,9 +85,7 @@ export default function RequestLeave() {
     } catch (error) {
       console.error(
         "❌ Error submitting leave request:",
-        axios.isAxiosError(error)
-          ? error.response?.data || error.message
-          : error
+        (error as any)?.response?.data || (error as any)?.message || error
       );
       setMessage("Error submitting leave request. Please try again.");
     }
@@ -117,52 +112,53 @@ export default function RequestLeave() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 p-6 rounded-lg">
-      {/* ✅ Leave Summary */}
-      <LeaveSummary />
-
-      {/* ✅ Page Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Request Leave</h1>
-          <p className="mt-1 text-md text-gray-600">
-            Submit your leave request
-          </p>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Request Leave</h1>
+              <p className="mt-1 text-sm text-sky-50">
+                Submit your leave request with date range and supporting documents.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/leave")}
+              className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50"
+            >
+              Back
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => navigate("/leave")}
-          className="btn-secondary px-4 py-2 text-sm"
-        >
-          Back
-        </button>
-      </div>
+      </section>
+
+      <LeaveSummary />
 
       {message && (
         <div
-          className={`p-4 rounded-lg ${
+          className={`rounded-md border p-4 text-sm ${
             message.includes("successfully")
-              ? "bg-green-50 text-green-700"
-              : "bg-red-50 text-red-700"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-rose-200 bg-rose-50 text-rose-700"
           }`}
         >
           {message}
         </div>
       )}
 
-      {/* ✅ Leave Request Form */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-lg shadow-lg space-y-4"
+        className="space-y-4 rounded-md border border-slate-300 bg-white p-4 shadow-sm"
       >
         <div>
-          <label className="block text-sm font-semibold text-gray-700">
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
             Leave Type
           </label>
           <select
             name="leaveType"
             value={formData.leaveType}
             onChange={handleChange}
-            className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
             required
           >
             <option value="">Select Leave Type</option>
@@ -176,7 +172,7 @@ export default function RequestLeave() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700">
+            <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
               Start Date
             </label>
             <input
@@ -184,13 +180,13 @@ export default function RequestLeave() {
               name="startDate"
               value={formData.startDate}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700">
+            <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
               End Date
             </label>
             <input
@@ -198,14 +194,14 @@ export default function RequestLeave() {
               name="endDate"
               value={formData.endDate}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
               required
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700">
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
             Reason
           </label>
           <textarea
@@ -213,14 +209,14 @@ export default function RequestLeave() {
             value={formData.reason}
             onChange={handleChange}
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
             placeholder="Enter reason..."
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700">
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
             Attachments (optional)
           </label>
           <input
@@ -228,7 +224,7 @@ export default function RequestLeave() {
             name="proofs"
             accept=".pdf,.jpg,.jpeg,.png"
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
             multiple
           />
           {formData.proofs.length > 0 && (
@@ -246,11 +242,11 @@ export default function RequestLeave() {
           <button
             type="button"
             onClick={() => navigate("/leave")}
-            className="btn-secondary px-4 py-2 text-sm"
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             Cancel
           </button>
-          <button type="submit" className="btn-primary px-4 py-2 text-sm">
+          <button type="submit" className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800">
             Submit
           </button>
         </div>

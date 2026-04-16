@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Briefcase, MapPin, Clock, DollarSign, Users, X } from 'lucide-react';
+import { Briefcase, MapPin, Clock, IndianRupee, Users, X } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -207,7 +207,7 @@ export default function JobDetails() {
             <span>{job.employmentType}</span>
           </div>
           <div className="flex items-center text-gray-600">
-            <DollarSign className="h-5 w-5 mr-2" />
+            <IndianRupee className="h-5 w-5 mr-2" />
             <span>{job.salaryRange}</span>
           </div>
           <div className="flex items-center text-gray-600">

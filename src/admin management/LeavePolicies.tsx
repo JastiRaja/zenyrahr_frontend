@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { useState, useEffect } from "react";
 import { Pencil, Save } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
+import api from "../api/axios";
 
 interface LeavePolicy {
   id: number;
@@ -25,7 +23,7 @@ const LeavePolicies = () => {
   // Fetch Leave Policies from API
   const fetchLeavePolicies = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/leave-policies`);
+      const response = await api.get(`/api/leave-policies`);
 
       setLeavePolicies(response.data);
     } catch (err) {
@@ -42,8 +40,8 @@ const LeavePolicies = () => {
   // Handle Save
   const handleSave = async (id: number) => {
     try {
-      await axios.put(
-        `${API_BASE_URL}/api/leave-policies/${id}`,
+      await api.put(
+        `/api/leave-policies/${id}`,
         updatedPolicy
       );
 
@@ -55,22 +53,40 @@ const LeavePolicies = () => {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-800">
-        Company Leave Policies
-      </h2>
-      <p className="mt-2 text-gray-600">
-        Manage and update company leave policies.
-      </p>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h2 className="text-3xl font-bold tracking-tight">Company Leave Policies</h2>
+          <p className="mt-1 text-sm text-sky-50">Manage and update leave policy configuration.</p>
+        </div>
+        <div className="grid grid-cols-1 divide-y divide-slate-200 bg-white sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Policies</p>
+            <p className="mt-1 text-xl font-bold text-slate-900">{leavePolicies.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Approval Required</p>
+            <p className="mt-1 text-xl font-bold text-amber-700">
+              {leavePolicies.filter((policy) => policy.approvalRequired).length}
+            </p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">No Approval</p>
+            <p className="mt-1 text-xl font-bold text-emerald-700">
+              {leavePolicies.filter((policy) => !policy.approvalRequired).length}
+            </p>
+          </div>
+        </div>
+      </section>
 
-      <div className="mt-6">
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
         {leavePolicies.length === 0 ? (
-          <p className="text-gray-500">No leave policies available.</p>
+          <p className="py-4 text-sm text-slate-500">No leave policies available.</p>
         ) : (
           leavePolicies.map((policy) => (
             <div
               key={policy.id}
-              className="p-4 border rounded-md mb-4 bg-gray-50"
+              className="mb-3 rounded-md border border-slate-200 bg-slate-50 p-4"
             >
               {editingId === policy.id ? (
                 <div className="space-y-2">
@@ -83,7 +99,7 @@ const LeavePolicies = () => {
                         name: e.target.value,
                       })
                     }
-                    className="border p-2 w-full rounded"
+                    className="w-full rounded-md border border-slate-300 p-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   />
                   <textarea
                     value={updatedPolicy.description || ""}
@@ -93,7 +109,7 @@ const LeavePolicies = () => {
                         description: e.target.value,
                       })
                     }
-                    className="border p-2 w-full rounded"
+                    className="w-full rounded-md border border-slate-300 p-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   />
                   <div className="flex gap-2">
                     <input
@@ -105,7 +121,7 @@ const LeavePolicies = () => {
                           maxCarryForward: Number(e.target.value),
                         })
                       }
-                      className="border p-2 rounded w-1/2"
+                      className="w-1/2 rounded-md border border-slate-300 p-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                       placeholder="Max Carry Forward"
                     />
                     <select
@@ -116,7 +132,7 @@ const LeavePolicies = () => {
                           approvalRequired: e.target.value === "true",
                         })
                       }
-                      className="border p-2 rounded w-1/2"
+                      className="w-1/2 rounded-md border border-slate-300 p-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                     >
                       <option value="true">Approval Required</option>
                       <option value="false">No Approval Required</option>
@@ -124,27 +140,27 @@ const LeavePolicies = () => {
                   </div>
                   <button
                     onClick={() => handleSave(policy.id)}
-                    className="bg-green-500 text-white px-4 py-2 rounded"
+                    className="inline-flex items-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
                   >
                     <Save className="inline-block w-4 h-4 mr-2" /> Save
                   </button>
                 </div>
               ) : (
                 <div>
-                  <h3 className="text-lg font-semibold">{policy.name}</h3>
-                  <p className="text-gray-600">{policy.description}</p>
-                  <p className="text-gray-500">
+                  <h3 className="text-base font-semibold text-slate-900">{policy.name}</h3>
+                  <p className="text-sm text-slate-600">{policy.description}</p>
+                  <p className="text-sm text-slate-500">
                     <strong>Accrual:</strong> {policy.accrual} |{" "}
                     <strong>Max Carry Forward:</strong> {policy.maxCarryForward}{" "}
                     days
                   </p>
-                  <p className="text-gray-500">
+                  <p className="text-sm text-slate-500">
                     <strong>Approval:</strong>{" "}
                     {policy.approvalRequired ? "Required" : "Not Required"}
                   </p>
                   <button
                     onClick={() => handleEdit(policy)}
-                    className="text-blue-500 hover:underline"
+                    className="mt-2 inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-sky-700 hover:bg-slate-50"
                   >
                     <Pencil className="inline-block w-4 h-4 mr-2" /> Edit
                   </button>
@@ -153,7 +169,7 @@ const LeavePolicies = () => {
             </div>
           ))
         )}
-      </div>
+      </section>
     </div>
   );
 };

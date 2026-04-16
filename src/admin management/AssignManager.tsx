@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import Select from "react-select";
+import { Search } from "lucide-react";
+import api from "../api/axios";
 
 const AssignManager = () => {
   interface Employee {
@@ -42,8 +43,6 @@ const AssignManager = () => {
     [key: number]: { value: number; label: string } | null;
   }>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
-
   const filteredAssignments = assignments.filter(
     (assignment) =>
       assignment.employeeDetails
@@ -60,7 +59,7 @@ const AssignManager = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/auth/employees`);
+      const response = await api.get(`/auth/employees`);
       setEmployees(response.data);
 
       const mappedAssignments = response.data.map((emp: Employee) => ({
@@ -91,9 +90,7 @@ const AssignManager = () => {
 
       await Promise.all(
         selectedEmployees.map((emp) =>
-          axios.put(
-            `${API_BASE_URL}/auth/employees/${emp.value}/manager/${selectedManager.value}`
-          )
+          api.put(`/auth/employees/${emp.value}/manager/${selectedManager.value}`)
         )
       );
 
@@ -124,9 +121,7 @@ const AssignManager = () => {
       setLoading(true);
       setMessage("");
 
-      await axios.put(
-        `${API_BASE_URL}/auth/employees/${employeeId}/manager/${newManager.value}`
-      );
+      await api.put(`/auth/employees/${employeeId}/manager/${newManager.value}`);
 
       setMessage(`✅ Manager updated successfully!`);
       setEditingEmployeeId(null); // Exit editing mode
@@ -143,9 +138,7 @@ const AssignManager = () => {
   const handleRemoveManager = async (employeeId: number) => {
     try {
       setLoading(true);
-      await axios.delete(
-        `${API_BASE_URL}/auth/employees/${employeeId}/manager`
-      );
+      await api.delete(`/auth/employees/${employeeId}/manager`);
       setMessage("✅ Manager removed successfully!");
       fetchEmployees();
     } catch (error) {
@@ -170,149 +163,186 @@ const AssignManager = () => {
       label: `${emp.code} - ${emp.firstName} ${emp.lastName}`,
     }));
 
+  const assignedCount = assignments.filter(
+    (assignment) => assignment.managerId !== null
+  ).length;
+  const unassignedCount = assignments.length - assignedCount;
+  const successMessage = message.startsWith("✅");
+
   return (
-    // <div className="max-w-4xl mx-auto mt-2 p-6 bg-white shadow-lg rounded-lg">
-    <div className="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-        Assign, Reassign, or Remove Reporting Manager
-      </h2>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h1 className="text-3xl font-bold tracking-tight">Assign Manager</h1>
+          <p className="mt-1 text-sm text-sky-50">
+            Assign, reassign, or remove reporting managers for employees.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Employees</p>
+            <p className="mt-1 text-xl font-bold text-slate-900">{assignments.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Managers</p>
+            <p className="mt-1 text-xl font-bold text-sky-700">{managerOptions.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Assigned</p>
+            <p className="mt-1 text-xl font-bold text-emerald-700">{assignedCount}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Unassigned</p>
+            <p className="mt-1 text-xl font-bold text-rose-700">{unassignedCount}</p>
+          </div>
+        </div>
+      </section>
 
       {message && (
-        <div className="text-center text-sm font-medium text-white bg-red-500 p-2 rounded-md mb-4">
+        <div
+          className={`rounded-md border px-4 py-2 text-sm ${
+            successMessage
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-rose-200 bg-rose-50 text-rose-700"
+          }`}
+        >
           {message}
         </div>
       )}
 
-      {/* Side-by-Side Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Employee Selection */}
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
             Select Employees
           </label>
           <Select
             options={employeeOptions}
             value={selectedEmployees}
             onChange={(newValue) => setSelectedEmployees([...newValue])}
-            placeholder="🔍 Search employees..."
+            placeholder="Search employees..."
             isMulti
             isSearchable
             className="rounded-md shadow-sm"
           />
         </div>
 
-        {/* Manager Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
             Select Manager
           </label>
           <Select
             options={managerOptions}
             value={selectedManager}
             onChange={setSelectedManager}
-            placeholder="🔍 Search manager..."
+            placeholder="Search manager..."
             isSearchable
             className="rounded-md shadow-sm"
           />
         </div>
       </div>
 
-      {/* Assign Button */}
-      <div className="mt-6 text-center">
+      <div className="mt-4">
         <button
           onClick={handleAssignManager}
-          className={`w-full md:w-auto px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white font-semibold rounded-md hover:from-blue-600 hover:to-blue-800 transition-all duration-300 ${
+          className={`rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 ${
             loading ? "opacity-50 cursor-not-allowed" : ""
           }`}
           disabled={loading}
         >
           {loading
-            ? "⏳ Assigning..."
-            : "✅ Assign Manager to Selected Employees"}
+            ? "Assigning..."
+            : "Assign Manager to Selected Employees"}
         </button>
       </div>
+      </section>
 
-      {/* ✅ Assigned Managers Table with Reassign & Remove Options */}
-      {/* ✅ Search Input for Filtering the Table */}
-      <div className="mb-4 flex justify-end">
-        <input
-          type="text"
-          placeholder="🔍 Search employee or manager..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-80 px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-300"
-        />
-      </div>
-
-      {/* ✅ Assigned Managers Table with Search Filter */}
-      <h3 className="text-lg font-semibold mt-6 mb-3">Assigned Managers</h3>
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border rounded-md shadow-md">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="py-2 px-4 border">Employee (Code & Name)</th>
-              <th className="py-2 px-4 border">Manager (Code & Name)</th>
-              <th className="py-2 px-4 border">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredAssignments.length > 0 ? (
-              filteredAssignments.map((item, index) => (
-                <tr key={index} className="text-center">
-                  <td className="py-2 px-4 border">{item.employeeDetails}</td>
-                  <td className="py-2 px-4 border">
-                    {editingEmployeeId === item.employeeId ? (
-                      <Select
-                        options={managerOptions}
-                        value={newManagerSelection[item.employeeId] || null}
-                        onChange={(selected) =>
-                          setNewManagerSelection((prev) => ({
-                            ...prev,
-                            [item.employeeId]: selected,
-                          }))
-                        }
-                        placeholder="Select new manager..."
-                        isSearchable
-                      />
-                    ) : (
-                      item.managerDetails
-                    )}
-                  </td>
-                  <td className="py-2 px-4 border flex justify-center space-x-2">
-                    {editingEmployeeId === item.employeeId ? (
-                      <button
-                        onClick={() => handleReassignManager(item.employeeId)}
-                        className="bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600 transition"
-                      >
-                        Save
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setEditingEmployeeId(item.employeeId)}
-                        className="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition"
-                      >
-                        Reassign
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleRemoveManager(item.employeeId)}
-                      className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition"
-                    >
-                      Remove
-                    </button>
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Assigned Managers
+          </h3>
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search employee or manager..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+            />
+          </div>
+        </div>
+        <div className="overflow-x-auto rounded-md border border-slate-200">
+          <table className="min-w-full">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Employee (Code & Name)</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Manager (Code & Name)</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredAssignments.length > 0 ? (
+                filteredAssignments.map((item, index) => (
+                  <tr key={index}>
+                    <td className="px-4 py-3 text-sm text-slate-800">{item.employeeDetails}</td>
+                    <td className="px-4 py-3 text-sm text-slate-800">
+                      {editingEmployeeId === item.employeeId ? (
+                        <Select
+                          options={managerOptions}
+                          value={newManagerSelection[item.employeeId] || null}
+                          onChange={(selected) =>
+                            setNewManagerSelection((prev) => ({
+                              ...prev,
+                              [item.employeeId]: selected,
+                            }))
+                          }
+                          placeholder="Select new manager..."
+                          isSearchable
+                        />
+                      ) : (
+                        item.managerDetails
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex gap-2">
+                        {editingEmployeeId === item.employeeId ? (
+                          <button
+                            onClick={() => handleReassignManager(item.employeeId)}
+                            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                          >
+                            Save
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setEditingEmployeeId(item.employeeId)}
+                            className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
+                          >
+                            Reassign
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRemoveManager(item.employeeId)}
+                          className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-sm text-slate-500">
+                    No matching employees found.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={3} className="py-2 px-4 text-center text-gray-500">
-                  No matching employees found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 };

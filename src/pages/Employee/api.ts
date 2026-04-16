@@ -4,19 +4,30 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
 const api = axios.create({
   baseURL: BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
   withCredentials: true
 });
 
 // Add request interceptor for auth token
 api.interceptors.request.use(
   (config) => {
+    const headers = (config.headers || {}) as Record<string, string>;
+    const isFormData = typeof FormData !== "undefined" && config.data instanceof FormData;
+    if (isFormData) {
+      // Let the browser set multipart/form-data with boundary.
+      delete headers["Content-Type"];
+    } else if (!headers["Content-Type"]) {
+      headers["Content-Type"] = "application/json";
+    }
+    config.headers = headers;
+
     // Try to get token from different possible locations
-    const token = localStorage.getItem("token") || 
-                 localStorage.getItem("auth_token") || 
-                 localStorage.getItem("authState")?.token;
+    const authStateRaw = localStorage.getItem("authState");
+    const authStateToken = authStateRaw ? JSON.parse(authStateRaw)?.token : null;
+    const token =
+      localStorage.getItem("accessToken") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("auth_token") ||
+      authStateToken;
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -43,11 +54,15 @@ api.interceptors.response.use(
             refreshToken
           });
           
-          const { token } = response.data;
-          localStorage.setItem("token", token);
+          const refreshedToken = response.data?.accessToken || response.data?.token;
+          if (!refreshedToken) {
+            throw new Error("No access token in refresh response");
+          }
+          localStorage.setItem("accessToken", refreshedToken);
+          localStorage.setItem("token", refreshedToken);
           
           // Retry the original request
-          error.config.headers.Authorization = `Bearer ${token}`;
+          error.config.headers.Authorization = `Bearer ${refreshedToken}`;
           return axios(error.config);
         } catch (refreshError) {
           // If refresh fails, clear everything and redirect to login

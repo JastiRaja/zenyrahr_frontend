@@ -15,13 +15,25 @@ export interface Payslip {
 }
 
 export interface Attendance {
-  id: number;
+  id?: number;
   employeeId: number;
   date: string;
-  checkIn: string;
-  checkOut: string;
-  status: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE';
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+  checkInLatitude?: number | null;
+  checkInLongitude?: number | null;
+  checkInLocationLabel?: string | null;
+  checkOutLatitude?: number | null;
+  checkOutLongitude?: number | null;
+  checkOutLocationLabel?: string | null;
+  status: 'PRESENT' | 'ABSENT' | 'HALF_DAY' | 'LEAVE' | 'HOLIDAY' | 'CHECKED_IN' | string;
   remarks?: string;
+}
+
+export interface PunchPayload {
+  latitude?: number | null;
+  longitude?: number | null;
+  locationLabel?: string | null;
 }
 
 export interface Payscale {
@@ -37,6 +49,7 @@ export interface Payscale {
 
 export interface Employee {
   id: number;
+  code?: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -44,6 +57,13 @@ export interface Employee {
   username: string;
   role: string;
   department: string;
+  designation?: string;
+  organization?: {
+    id: number;
+    name: string;
+    address?: string;
+    logoUrl?: string;
+  } | null;
   joinDate: string;
   status?: string;
 }
@@ -147,6 +167,44 @@ export const getAllLeaveTypes = async (): Promise<string[]> => {
 
 export const markBatchAttendance = async (attendanceList: any[]) => {
   await axiosInstance.post('/api/payroll/attendance/batch', attendanceList);
+};
+
+export const getTodayAttendance = async (
+  employeeId: number
+): Promise<Attendance | null> => {
+  const response = await axiosInstance.get<Attendance | null>(
+    '/api/payroll/attendance/today',
+    { params: { employeeId } }
+  );
+  const data = response.data;
+  if (data == null || typeof data !== 'object') {
+    return null;
+  }
+  return data;
+};
+
+export const punchInEmployee = async (
+  employeeId: number,
+  payload: PunchPayload = {}
+): Promise<Attendance> => {
+  const response = await axiosInstance.post<Attendance>(
+    '/api/payroll/attendance/punch-in',
+    payload,
+    { params: { employeeId } }
+  );
+  return response.data;
+};
+
+export const punchOutEmployee = async (
+  employeeId: number,
+  payload: PunchPayload = {}
+): Promise<Attendance> => {
+  const response = await axiosInstance.post<Attendance>(
+    '/api/payroll/attendance/punch-out',
+    payload,
+    { params: { employeeId } }
+  );
+  return response.data;
 };
 
 // Payscale APIs

@@ -72,8 +72,8 @@ const ExpenseStatus = ({
 
   return (
     <div className="flex justify-between items-center">
-      <span className="text-sm text-gray-600">{label}:</span>
-      <span className={`text-sm font-semibold ${getStatusColor(status)}`}>
+      <span className="text-xs text-slate-500">{label}:</span>
+      <span className={`text-xs font-semibold ${getStatusColor(status)}`}>
         {status || "N/A"}
       </span>
     </div>
@@ -522,43 +522,82 @@ export default function ExpenseApprovals() {
   const filteredApproved = filterCombined(combinedApproved);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Expense Approvals</h1>
-        {confirmationMessage && (
-          <div
-            className={`px-4 py-2 rounded-md ${
-              confirmationMessage.type === "approve"
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
-            }`}
-          >
-            {confirmationMessage.text}
+    <div className="mx-auto max-w-6xl space-y-4 p-2">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <h1 className="text-3xl font-bold tracking-tight">Expense Approvals</h1>
+          <p className="mt-1 text-sm text-sky-50">
+            Review and process expense and travel approvals.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Pending Total</p>
+            <p className="mt-1 text-xl font-bold text-amber-700">{filteredPending.length}</p>
           </div>
-        )}
-      </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Approved Total</p>
+            <p className="mt-1 text-xl font-bold text-emerald-700">{filteredApproved.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Expense Requests</p>
+            <p className="mt-1 text-xl font-bold text-sky-700">{pendingExpenses.length + approvedExpenses.length}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Travel Requests</p>
+            <p className="mt-1 text-xl font-bold text-indigo-700">{pendingTravel.length + approvedTravel.length}</p>
+          </div>
+        </div>
+      </section>
 
+      {confirmationMessage && (
+        <div
+          className={`rounded-md border px-4 py-2 text-sm ${
+            confirmationMessage.type === "approve"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-rose-200 bg-rose-50 text-rose-700"
+          }`}
+        >
+          {confirmationMessage.text}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
       <Tab.Group selectedIndex={tabIndex} onChange={setTabIndex}>
-        <Tab.List className="flex space-x-2 border-b mb-4">
-          <Tab className={({ selected }) =>
-            selected
-              ? "px-4 py-2 border-b-2 border-indigo-600 font-semibold text-indigo-700"
-              : "px-4 py-2 text-gray-500 hover:text-indigo-700"
-          }>Pending</Tab>
-          <Tab className={({ selected }) =>
-            selected
-              ? "px-4 py-2 border-b-2 border-indigo-600 font-semibold text-indigo-700"
-              : "px-4 py-2 text-gray-500 hover:text-indigo-700"
-          }>Approved</Tab>
+        <Tab.List className="mb-4 flex space-x-2">
+          <Tab
+            className={({ selected }) =>
+              selected
+                ? "rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white"
+                : "rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            }
+          >
+            Pending
+          </Tab>
+          <Tab
+            className={({ selected }) =>
+              selected
+                ? "rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white"
+                : "rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            }
+          >
+            Approved
+          </Tab>
         </Tab.List>
         <Tab.Panels>
           <Tab.Panel>
-            <div className="flex flex-wrap gap-4 mb-4">
+            <div className="mb-4 flex flex-wrap gap-3">
               <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   placeholder="Search employee..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -566,21 +605,21 @@ export default function ExpenseApprovals() {
               </div>
               <input
                 type="date"
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                 value={dateFrom}
                 onChange={e => setDateFrom(e.target.value)}
                 placeholder="From date"
               />
               <input
                 type="date"
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                 value={dateTo}
                 onChange={e => setDateTo(e.target.value)}
                 placeholder="To date"
               />
               <input
                 type="number"
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                 value={amountMin}
                 onChange={e => setAmountMin(e.target.value)}
                 placeholder="Min amount"
@@ -588,41 +627,41 @@ export default function ExpenseApprovals() {
               />
               <input
                 type="number"
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                 value={amountMax}
                 onChange={e => setAmountMax(e.target.value)}
                 placeholder="Max amount"
                 min="0"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {filteredPending.map((item) => (
                 <div
                   key={`approval-card-${item._type}-${item.id}`}
-                  className="p-5 rounded-lg shadow-md border bg-white hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 p-4 transition hover:shadow-sm"
                   onClick={() => { setSelectedRequest(item); setModalComments(""); setModalError(""); }}
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${item._type === 'expense' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>{item._type === 'expense' ? 'Expense' : 'Travel'}</span>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item._type === 'expense' ? 'bg-sky-100 text-sky-700' : 'bg-indigo-100 text-indigo-700'}`}>{item._type === 'expense' ? 'Expense' : 'Travel'}</span>
                   </div>
                   {item._type === 'expense' ? (
                     <>
-                      <h3 className="text-md font-semibold text-gray-900">
+                      <h3 className="text-sm font-semibold text-slate-900">
                         {item.employee?.firstName} {item.employee?.lastName}
                       </h3>
-                      <p className="text-sm text-gray-700 mt-2">💰 ₹{item.amount}</p>
-                      <p className="text-sm text-gray-500">📅 {dayjs(item.date).format("YYYY-MM-DD")}</p>
+                      <p className="mt-2 text-sm text-slate-700">₹{item.amount}</p>
+                      <p className="text-xs text-slate-500">{dayjs(item.date).format("YYYY-MM-DD")}</p>
                       <ExpenseStatus status={item.firstLevelApprovalStatus} label="First Level" />
                       <ExpenseStatus status={item.secondLevelApprovalStatus} label="Second Level" />
                     </>
                   ) : (
                     <>
-                      <h3 className="text-md font-semibold text-gray-900">
+                      <h3 className="text-sm font-semibold text-slate-900">
                         {item.employee?.firstName} {item.employee?.lastName}
                       </h3>
-                      <p className="text-sm text-gray-700 mt-2">🏷️ {item.destination}</p>
-                      <p className="text-sm text-gray-500">📅 {dayjs(item.startDate).format("YYYY-MM-DD")} - {dayjs(item.endDate).format("YYYY-MM-DD")}</p>
-                      <p className="text-sm text-gray-700">💰 ₹{item.budget}</p>
+                      <p className="mt-2 text-sm text-slate-700">{item.destination}</p>
+                      <p className="text-xs text-slate-500">{dayjs(item.startDate).format("YYYY-MM-DD")} - {dayjs(item.endDate).format("YYYY-MM-DD")}</p>
+                      <p className="text-sm text-slate-700">₹{item.budget}</p>
                       <ExpenseStatus status={item.firstLevelApprovalStatus} label="First Level" />
                       <ExpenseStatus status={item.secondLevelApprovalStatus} label="Second Level" />
                     </>
@@ -630,17 +669,17 @@ export default function ExpenseApprovals() {
                 </div>
               ))}
               {filteredPending.length === 0 && (
-                <div className="col-span-full text-center text-gray-500">No pending approvals found.</div>
+                <div className="col-span-full text-center text-sm text-slate-500">No pending approvals found.</div>
               )}
             </div>
           </Tab.Panel>
           <Tab.Panel>
-            <div className="flex flex-wrap gap-4 mb-4">
+            <div className="mb-4 flex flex-wrap gap-3">
               <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                   placeholder="Search employee..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -648,21 +687,21 @@ export default function ExpenseApprovals() {
               </div>
               <input
                 type="date"
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                 value={dateFrom}
                 onChange={e => setDateFrom(e.target.value)}
                 placeholder="From date"
               />
               <input
                 type="date"
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                 value={dateTo}
                 onChange={e => setDateTo(e.target.value)}
                 placeholder="To date"
               />
               <input
                 type="number"
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                 value={amountMin}
                 onChange={e => setAmountMin(e.target.value)}
                 placeholder="Min amount"
@@ -670,14 +709,14 @@ export default function ExpenseApprovals() {
               />
               <input
                 type="number"
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                 value={amountMax}
                 onChange={e => setAmountMax(e.target.value)}
                 placeholder="Max amount"
                 min="0"
               />
               <select
-                className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md"
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
                 value={approvedStatus}
                 onChange={e => setApprovedStatus(e.target.value)}
               >
@@ -687,34 +726,34 @@ export default function ExpenseApprovals() {
                 <option value="pending">Pending</option>
               </select>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {filteredApproved.map((item) => (
                 <div
                   key={`approval-card-${item._type}-${item.id}`}
-                  className="p-5 rounded-lg shadow-md border bg-white hover:shadow-lg transition-all duration-200 cursor-pointer"
+                  className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 p-4 transition hover:shadow-sm"
                   onClick={() => { setSelectedRequest(item); setModalComments(""); setModalError(""); }}
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${item._type === 'expense' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>{item._type === 'expense' ? 'Expense' : 'Travel'}</span>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item._type === 'expense' ? 'bg-sky-100 text-sky-700' : 'bg-indigo-100 text-indigo-700'}`}>{item._type === 'expense' ? 'Expense' : 'Travel'}</span>
                   </div>
                   {item._type === 'expense' ? (
                     <>
-                      <h3 className="text-md font-semibold text-gray-900">
+                      <h3 className="text-sm font-semibold text-slate-900">
                         {item.employee?.firstName} {item.employee?.lastName}
                       </h3>
-                      <p className="text-sm text-gray-700 mt-2">💰 ₹{item.amount}</p>
-                      <p className="text-sm text-gray-500">📅 {dayjs(item.date).format("YYYY-MM-DD")}</p>
+                      <p className="mt-2 text-sm text-slate-700">₹{item.amount}</p>
+                      <p className="text-xs text-slate-500">{dayjs(item.date).format("YYYY-MM-DD")}</p>
                       <ExpenseStatus status={item.firstLevelApprovalStatus} label="First Level" />
                       <ExpenseStatus status={item.secondLevelApprovalStatus} label="Second Level" />
                     </>
                   ) : (
                     <>
-                      <h3 className="text-md font-semibold text-gray-900">
+                      <h3 className="text-sm font-semibold text-slate-900">
                         {item.employee?.firstName} {item.employee?.lastName}
                       </h3>
-                      <p className="text-sm text-gray-700 mt-2">🏷️ {item.destination}</p>
-                      <p className="text-sm text-gray-500">📅 {dayjs(item.startDate).format("YYYY-MM-DD")} - {dayjs(item.endDate).format("YYYY-MM-DD")}</p>
-                      <p className="text-sm text-gray-700">💰 ₹{item.budget}</p>
+                      <p className="mt-2 text-sm text-slate-700">{item.destination}</p>
+                      <p className="text-xs text-slate-500">{dayjs(item.startDate).format("YYYY-MM-DD")} - {dayjs(item.endDate).format("YYYY-MM-DD")}</p>
+                      <p className="text-sm text-slate-700">₹{item.budget}</p>
                       <ExpenseStatus status={item.firstLevelApprovalStatus} label="First Level" />
                       <ExpenseStatus status={item.secondLevelApprovalStatus} label="Second Level" />
                     </>
@@ -722,23 +761,24 @@ export default function ExpenseApprovals() {
                 </div>
               ))}
               {filteredApproved.length === 0 && (
-                <div className="col-span-full text-center text-gray-500">No approved approvals found.</div>
+                <div className="col-span-full text-center text-sm text-slate-500">No approved approvals found.</div>
               )}
             </div>
           </Tab.Panel>
         </Tab.Panels>
       </Tab.Group>
+      </section>
 
       <ReactModal
         isOpen={!!selectedRequest}
         onRequestClose={() => setSelectedRequest(null)}
         className="fixed inset-0 flex items-center justify-center z-50 outline-none"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-40 z-40"
+        overlayClassName="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-40"
         ariaHideApp={false}
       >
         {selectedRequest && (
-          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 relative">
-            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-600" onClick={() => setSelectedRequest(null)}>&times;</button>
+          <div className="relative w-full max-w-lg rounded-md border border-slate-200 bg-white p-6 shadow-xl">
+            <button className="absolute top-2 right-2 text-slate-400 hover:text-slate-600" onClick={() => setSelectedRequest(null)}>&times;</button>
             <div className="mb-4 flex items-center gap-2">
               <span className={`px-2 py-1 rounded text-xs font-bold ${selectedRequest._type === 'expense' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>{selectedRequest._type === 'expense' ? 'Expense' : 'Travel'}</span>
             </div>
@@ -805,7 +845,7 @@ export default function ExpenseApprovals() {
             {((selectedRequest && (canApproveFirstLevel(selectedRequest) || canApproveSecondLevel(selectedRequest))) ? (
               <div className="mt-6">
                 <textarea
-                  className="w-full border rounded p-2 mb-2"
+                  className="input-control mb-2"
                   rows={3}
                   placeholder="Enter comments for approval/rejection"
                   value={modalComments}

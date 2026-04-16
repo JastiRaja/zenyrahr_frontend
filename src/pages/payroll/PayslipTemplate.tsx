@@ -1,22 +1,29 @@
-import React, { forwardRef } from 'react';
-import logo from '../../assets/Practio Logo Transparent.png';
+import { forwardRef } from 'react';
+import logo from "../../assets/logo.jpeg";
 
 interface PayslipTemplateProps {
   payslip: any;
   employee: any;
 }
 
-const PayslipTemplate = forwardRef<HTMLDivElement, PayslipTemplateProps>(({ payslip, employee }, ref) => (
+const PayslipTemplate = forwardRef<HTMLDivElement, PayslipTemplateProps>(({ payslip, employee }, ref) => {
+  const companyLogoSrc = employee?.companyLogoUrl || logo;
+  const companyName = employee?.companyName || 'ZenyraHR';
+  const companyAddress =
+    employee?.companyAddress ||
+    '8-3-224/11/D/5/1(G-127), Second Floor, Madhuranagar, Hyderabad, Telangana – 500038, India.';
+
+  return (
   <div ref={ref} style={{ background: '#fff', color: '#000', padding: 24, width: 800, fontFamily: 'Arial, sans-serif' }}>
     {/* Header */}
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #000', marginBottom: 16 }}>
       <div>
-        <img src={logo} alt="Practio Logo" style={{ height: 48 }} />
+        <img src={companyLogoSrc} alt={companyName} style={{ height: 48 }} />
       </div>
       <div style={{ textAlign: 'right' }}>
-        <h2 style={{ margin: 0, fontWeight: 'bold' }}>Practio</h2>
+        <h2 style={{ margin: 0, fontWeight: 'bold' }}>{companyName}</h2>
         <div style={{ fontSize: 12 }}>
-          8-3-224/11/D/5/1(G-127), Second Floor, Madhuranagar, Hyderabad, Telangana – 500038, India.
+          {companyAddress}
         </div>
       </div>
     </div>
@@ -111,6 +118,7 @@ const PayslipTemplate = forwardRef<HTMLDivElement, PayslipTemplateProps>(({ pays
       This is a computer-generated document. No signature is required.
     </div>
   </div>
-));
+  );
+});
 
 export default PayslipTemplate; 

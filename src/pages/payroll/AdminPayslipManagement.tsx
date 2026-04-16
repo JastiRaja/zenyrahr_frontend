@@ -45,6 +45,9 @@ const AdminPayslipManagement: React.FC = () => {
     paymentMethod: '',
     uanNumber: '',
     panNumber: '',
+    companyName: '',
+    companyAddress: '',
+    companyLogoUrl: '',
   });
   const [bankFormError, setBankFormError] = useState<string | null>(null);
   const [savingBankDetails, setSavingBankDetails] = useState(false);
@@ -180,6 +183,9 @@ const AdminPayslipManagement: React.FC = () => {
         paymentMethod: details.paymentMethod || '',
         uanNumber: details.uanNumber || '',
         panNumber: details.panNumber || '',
+        companyName: details.companyName || '',
+        companyAddress: details.companyAddress || '',
+        companyLogoUrl: details.companyLogoUrl || '',
       });
     } catch {
       setBankForm({
@@ -190,6 +196,9 @@ const AdminPayslipManagement: React.FC = () => {
         paymentMethod: '',
         uanNumber: '',
         panNumber: '',
+        companyName: '',
+        companyAddress: '',
+        companyLogoUrl: '',
       });
     }
   };
@@ -304,31 +313,31 @@ const AdminPayslipManagement: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="bg-white rounded-lg shadow p-6 max-w-1xl mx-auto">
-        <h2 className="text-2xl font-bold mb-4">Payslip Approval & Deductions</h2>
-        <div className="flex items-center mb-4 gap-4">
-          <label className="font-medium">Month:</label>
+    <div className="container mx-auto px-3 py-6">
+      <div className="bg-white rounded-lg shadow p-5 max-w-1xl mx-auto text-sm">
+        <h2 className="text-xl font-bold mb-3">Payslip Approval & Deductions</h2>
+        <div className="flex items-center mb-3 gap-3">
+          <label className="font-medium text-sm">Month:</label>
           <input
             type="month"
             value={generateMonth}
             onChange={e => setGenerateMonth(e.target.value)}
-            className="border rounded px-2 py-1"
+            className="border rounded px-2 py-1 text-sm"
             style={{ maxWidth: 160 }}
           />
           <button
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+            className="bg-blue-600 text-white px-3 py-1.5 text-sm rounded hover:bg-blue-700 disabled:opacity-50"
             onClick={handleGeneratePayroll}
             disabled={generating}
           >
             {generating ? 'Generating...' : 'Generate Payroll'}
           </button>
         </div>
-        {loading && <div className="text-center py-4">Loading...</div>}
-        {error && <div className="text-red-600 mb-4">{error}</div>}
-        {success && <div className="text-green-600 mb-4">{success}</div>}
+        {loading && <div className="text-center py-3 text-sm">Loading...</div>}
+        {error && <div className="text-red-600 mb-3 text-sm">{error}</div>}
+        {success && <div className="text-green-600 mb-3 text-sm">{success}</div>}
         <div className="overflow-x-auto">
-          <table className="min-w-full border border-gray-300 rounded">
+          <table className="min-w-full border border-gray-300 rounded text-sm">
             <thead className="bg-gray-100">
               <tr>
                 <th className="px-2 py-1 border-b">Employee</th>
@@ -352,7 +361,7 @@ const AdminPayslipManagement: React.FC = () => {
                   <td className="px-2 py-1 border-b">
                     {!hasBankDetails(p.employeeId) ? (
                       <button
-                        className="bg-yellow-500 text-white px-2 py-1 rounded"
+                        className="bg-yellow-500 text-white px-2 py-1 text-xs rounded"
                         onClick={() => openBankModal(p.employeeId)}
                       >
                         Add Bank Details
@@ -371,7 +380,7 @@ const AdminPayslipManagement: React.FC = () => {
                       type="text"
                       value={p.epfAmount || ''}
                       onChange={e => handleFieldChange(p.id, 'epfAmount', e.target.value)}
-                      className="border rounded px-1 py-0.5 w-20"
+                      className="border rounded px-1 py-0.5 w-20 text-sm"
                     />
                   </td>
                   <td className="px-2 py-1 border-b">
@@ -379,7 +388,7 @@ const AdminPayslipManagement: React.FC = () => {
                       type="text"
                       value={p.healthInsuranceDeduction || ''}
                       onChange={e => handleFieldChange(p.id, 'healthInsuranceDeduction', e.target.value)}
-                      className="border rounded px-1 py-0.5 w-20"
+                      className="border rounded px-1 py-0.5 w-20 text-sm"
                     />
                   </td>
                   <td className="px-2 py-1 border-b">
@@ -387,7 +396,7 @@ const AdminPayslipManagement: React.FC = () => {
                       type="text"
                       value={p.professionalTax || ''}
                       onChange={e => handleFieldChange(p.id, 'professionalTax', e.target.value)}
-                      className="border rounded px-1 py-0.5 w-20"
+                      className="border rounded px-1 py-0.5 w-20 text-sm"
                     />
                   </td>
                   <td className="px-2 py-1 border-b">
@@ -395,7 +404,7 @@ const AdminPayslipManagement: React.FC = () => {
                       type="text"
                       value={p.otherAllowances || ''}
                       onChange={e => handleFieldChange(p.id, 'otherAllowances', e.target.value)}
-                      className="border rounded px-1 py-0.5 w-20"
+                      className="border rounded px-1 py-0.5 w-20 text-sm"
                     />
                   </td>
                   <td className="px-2 py-1 border-b">{p.totalDeductions}</td>
@@ -404,14 +413,14 @@ const AdminPayslipManagement: React.FC = () => {
                       type="text"
                       value={p.netPay || ''}
                       onChange={e => handleFieldChange(p.id, 'netPay', e.target.value)}
-                      className="border rounded px-1 py-0.5 w-20"
+                      className="border rounded px-1 py-0.5 w-20 text-sm"
                     />
                   </td>
                   <td className="px-2 py-1 border-b">{p.status}</td>
                   <td className="px-2 py-1 border-b">
                     {p.status !== 'APPROVED' && (
                       <button
-                        className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                        className="bg-green-600 text-white px-2.5 py-1 text-xs rounded hover:bg-green-700"
                         onClick={() => handleApprove(p.id)}
                         disabled={loading}
                       >
@@ -420,7 +429,7 @@ const AdminPayslipManagement: React.FC = () => {
                     )}
                     {editingPayslipId === p.id && (
                       <button
-                        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 ml-2"
+                        className="bg-blue-600 text-white px-2.5 py-1 text-xs rounded hover:bg-blue-700 ml-2"
                         onClick={() => handleUpdateDeductions(p)}
                         disabled={loading}
                       >
@@ -502,6 +511,27 @@ const AdminPayslipManagement: React.FC = () => {
                 value={bankForm.panNumber}
                 onChange={e => setBankForm({ ...bankForm, panNumber: e.target.value })}
                 className="w-full border rounded px-2 py-1"
+              />
+              <input
+                type="text"
+                placeholder="Organization Name (optional)"
+                value={bankForm.companyName}
+                onChange={e => setBankForm({ ...bankForm, companyName: e.target.value })}
+                className="w-full border rounded px-2 py-1"
+              />
+              <input
+                type="text"
+                placeholder="Organization Logo URL (optional)"
+                value={bankForm.companyLogoUrl}
+                onChange={e => setBankForm({ ...bankForm, companyLogoUrl: e.target.value })}
+                className="w-full border rounded px-2 py-1"
+              />
+              <textarea
+                placeholder="Organization Address (optional)"
+                value={bankForm.companyAddress}
+                onChange={e => setBankForm({ ...bankForm, companyAddress: e.target.value })}
+                className="w-full border rounded px-2 py-1"
+                rows={2}
               />
               {bankFormError && <div className="text-red-600 text-sm">{bankFormError}</div>}
               <div className="flex justify-end space-x-2">

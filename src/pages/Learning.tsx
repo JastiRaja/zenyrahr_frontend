@@ -31,8 +31,8 @@ export default function Learning() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Learning & Development</h1>
-        <p className="mt-2 text-lg text-gray-600">
+        <h1 className="text-3xl font-bold text-slate-900">Learning & Development</h1>
+        <p className="mt-2 text-lg text-slate-600">
           Enhance your skills with our learning resources
         </p>
       </div>
@@ -46,8 +46,8 @@ export default function Learning() {
                 <item.icon className="h-6 w-6 text-white" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">{item.name}</p>
-                <p className="text-2xl font-semibold text-gray-900">{item.value}</p>
+                <p className="text-sm font-medium text-slate-500">{item.name}</p>
+                <p className="text-2xl font-semibold text-slate-900">{item.value}</p>
               </div>
             </div>
           </div>
@@ -68,11 +68,11 @@ export default function Learning() {
                   <category.icon className="h-6 w-6 text-indigo-600" />
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">{category.name}</h3>
-                  <p className="text-sm text-gray-500">{category.count}</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{category.name}</h3>
+                  <p className="text-sm text-slate-500">{category.count}</p>
                 </div>
               </div>
-              <ArrowRight className="h-5 w-5 text-gray-400" />
+              <ArrowRight className="h-5 w-5 text-slate-400" />
             </div>
           </div>
         ))}
@@ -80,10 +80,10 @@ export default function Learning() {
 
       {/* In Progress Courses */}
       <div className="card p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">In Progress Courses</h2>
+        <h2 className="text-lg font-semibold text-slate-900 mb-6">In Progress Courses</h2>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {courses.map((course) => (
-            <div key={course.id} className="flex flex-col md:flex-row bg-white rounded-lg overflow-hidden border border-gray-100 hover:shadow-md transition-shadow duration-200">
+            <div key={course.id} className="flex flex-col md:flex-row bg-white rounded-xl overflow-hidden border border-slate-200/70 hover:shadow-md transition-shadow duration-200">
               <div className="w-full md:w-48 h-48 md:h-auto relative">
                 <img
                   src={course.image}
@@ -99,18 +99,18 @@ export default function Learning() {
                   <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
                     {course.category}
                   </span>
-                  <div className="flex items-center text-sm text-gray-500">
+                  <div className="flex items-center text-sm text-slate-500">
                     <Clock className="h-4 w-4 mr-1" />
                     {course.duration}
                   </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{course.title}</h3>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">{course.title}</h3>
                 <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                  <div className="flex justify-between text-sm text-slate-600 mb-1">
                     <span>Progress</span>
                     <span>{course.progress}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-slate-200 rounded-full h-2">
                     <div
                       className="bg-indigo-600 h-2 rounded-full"
                       style={{ width: `${course.progress}%` }}
@@ -118,7 +118,7 @@ export default function Learning() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center text-sm text-gray-500">
+                  <div className="flex items-center text-sm text-slate-500">
                     <Users className="h-4 w-4 mr-1" />
                     {course.enrolled} enrolled
                   </div>
@@ -135,7 +135,7 @@ export default function Learning() {
       {/* Recommended Courses */}
       <div className="card p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Recommended for You</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Recommended for You</h2>
           <button className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
             View All
           </button>
@@ -176,8 +176,8 @@ export default function Learning() {
                 <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">
                   {course.category}
                 </span>
-                <h3 className="mt-2 text-lg font-semibold text-gray-900">{course.title}</h3>
-                <div className="mt-2 flex items-center justify-between text-sm text-gray-500">
+                <h3 className="mt-2 text-lg font-semibold text-slate-900">{course.title}</h3>
+                <div className="mt-2 flex items-center justify-between text-sm text-slate-500">
                   <span className="flex items-center">
                     <Clock className="h-4 w-4 mr-1" />
                     {course.duration}

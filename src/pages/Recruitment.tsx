@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, Users, Clock, Plus } from 'lucide-react';
+import { Briefcase, Users, Clock, Plus, Search } from 'lucide-react';
 import api from '../api/axios';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Recruitment {
   id: number;
@@ -20,6 +21,9 @@ interface Recruitment {
 
 export default function Recruitment() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const role = (user?.role || "").toLowerCase();
+  const canPostJob = role === "hr";
   const [jobs, setJobs] = useState<Recruitment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,177 +63,181 @@ export default function Recruitment() {
   });
 
   const departments = ['All Departments', ...new Set(jobs.map(job => job.department))];
+  const getStatusClass = (status: string) => {
+    if (status === 'OPEN') return 'bg-emerald-50 text-emerald-700';
+    if (status === 'CLOSED') return 'bg-rose-50 text-rose-700';
+    if (status === 'IN_PROGRESS') return 'bg-amber-50 text-amber-700';
+    return 'bg-slate-100 text-slate-700';
+  };
+  const stats = [
+    {
+      label: 'Active Jobs',
+      value: getActiveJobs(),
+      icon: Briefcase,
+      iconClass: 'bg-sky-100 text-sky-700',
+    },
+    {
+      label: 'Total Applicants',
+      value: getTotalApplicants(),
+      icon: Users,
+      iconClass: 'bg-emerald-100 text-emerald-700',
+    },
+    {
+      label: 'Interviews Scheduled',
+      value: getScheduledInterviews(),
+      icon: Clock,
+      iconClass: 'bg-amber-100 text-amber-700',
+    },
+    {
+      label: 'Time to Hire (avg)',
+      value: '0 days',
+      icon: Clock,
+      iconClass: 'bg-violet-100 text-violet-700',
+    },
+  ];
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Recruitment</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            Post and manage job openings, track applications
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('post')}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="h-5 w-5" />
-          Post New Job
-        </button>
-      </div>
-
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-indigo-100 text-indigo-600">
-              <Briefcase className="h-6 w-6" />
+    <div className="space-y-4">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Recruitment</h1>
+              <p className="mt-1 text-sm text-sky-50">
+                Post and manage job openings, track applications.
+              </p>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Active Jobs</p>
-              <p className="text-xl font-semibold text-gray-900">{getActiveJobs()}</p>
+            {canPostJob && (
+              <button
+                onClick={() => navigate('post')}
+                className="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Post New Job
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
+          {stats.map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className={`rounded-full p-2.5 ${item.iconClass}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase text-slate-500">{item.label}</p>
+                    <p className="text-2xl font-bold text-slate-900">{item.value}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-4 py-4">
+          <div className="flex flex-col gap-3 md:flex-row">
+            <div className="relative flex-1">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <Search className="h-4 w-4 text-slate-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search jobs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+              />
+            </div>
+            <div className="w-full md:w-60">
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+              >
+                {departments.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-100 text-green-600">
-              <Users className="h-6 w-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Applicants</p>
-              <p className="text-xl font-semibold text-gray-900">{getTotalApplicants()}</p>
-            </div>
+        {loading ? (
+          <div className="flex h-52 items-center justify-center">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-sky-700 border-t-transparent" />
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-              <Clock className="h-6 w-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Interviews Scheduled</p>
-              <p className="text-xl font-semibold text-gray-900">{getScheduledInterviews()}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-              <Clock className="h-6 w-6" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Time to Hire (avg)</p>
-              <p className="text-xl font-semibold text-gray-900">0 days</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search and Filter */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="Search jobs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-        <div className="w-full md:w-48">
-          <select
-            value={selectedDepartment}
-            onChange={(e) => setSelectedDepartment(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Job Listings */}
-      {loading ? (
-        <div className="flex justify-center items-center h-48">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-        </div>
-      ) : error ? (
-        <div className="text-center text-red-600 p-4">
-          <p>{error}</p>
-          <button 
-            onClick={fetchJobs}
-            className="mt-4 text-indigo-600 hover:text-indigo-800"
-          >
-            Try Again
-          </button>
-        </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredJobs.map((job) => (
-            <div
-              key={job.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+        ) : error ? (
+          <div className="p-6 text-center">
+            <p className="text-sm text-rose-700">{error}</p>
+            <button
+              onClick={fetchJobs}
+              className="mt-3 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-gray-900 truncate">
+              Try Again
+            </button>
+          </div>
+        ) : filteredJobs.length === 0 ? (
+          <div className="py-14 text-center">
+            <Briefcase className="mx-auto h-10 w-10 text-slate-300" />
+            <h3 className="mt-2 text-sm font-semibold text-slate-900">No jobs found</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              {searchQuery || selectedDepartment !== 'All Departments'
+                ? 'Try adjusting your search or filter criteria.'
+                : 'Get started by posting a new job.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
+            {filteredJobs.map((job) => (
+              <div
+                key={job.id}
+                className="rounded-md border border-slate-200 bg-white p-4 transition hover:shadow-sm"
+              >
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h2 className="truncate text-lg font-semibold text-slate-900">
                     {job.jobTitle}
                   </h2>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium
-                    ${job.status === 'OPEN' ? 'bg-green-100 text-green-800' :
-                      job.status === 'CLOSED' ? 'bg-red-100 text-red-800' :
-                      job.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'}`}
-                  >
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClass(job.status)}`}>
                     {job.status.replace('_', ' ')}
                   </span>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center text-gray-600">
-                    <Briefcase className="h-5 w-5 mr-2" />
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex items-center text-slate-600">
+                    <Briefcase className="mr-2 h-4 w-4" />
                     <span>{job.department}</span>
                   </div>
-                  <div className="flex items-center text-gray-600">
-                    <Users className="h-5 w-5 mr-2" />
+                  <div className="flex items-center text-slate-600">
+                    <Users className="mr-2 h-4 w-4" />
                     <span>{job.experienceLevel}</span>
                   </div>
-                  <div className="flex items-center text-gray-600">
-                    <Clock className="h-5 w-5 mr-2" />
+                  <div className="flex items-center text-slate-600">
+                    <Clock className="mr-2 h-4 w-4" />
                     <span>{job.employmentType}</span>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="mt-4 border-t border-slate-200 pt-3">
                   <button
                     onClick={() => navigate(`/recruitment/jobs/${job.id}`)}
-                    className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="inline-flex w-full items-center justify-center rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
                   >
                     View Details
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {filteredJobs.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <Briefcase className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No jobs found</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {searchQuery || selectedDepartment !== 'All Departments'
-              ? 'Try adjusting your search or filter criteria.'
-              : 'Get started by posting a new job.'}
-          </p>
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

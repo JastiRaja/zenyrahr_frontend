@@ -1,14 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Search,
-  Plus,
-  Filter,
-  MapPin,
-  Users,
-  Building2,
-  X,
-} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { Search, Plus, Filter, MapPin, Users, X, Trash2, Download } from "lucide-react";
+import CommonDialog from "../components/CommonDialog";
+import api from "../api/axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
@@ -16,6 +11,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 interface Employee {
   id: number;
   code: string;
+  active: boolean;
   firstName: string;
   lastName: string;
   username: string;
@@ -26,6 +22,10 @@ interface Employee {
   position: string;
   joinDate: string;
   workLocation: string;
+  organization?: { id: number; name: string } | null;
+  /** ISO timestamps from server (manager team view) */
+  todayCheckInTime?: string | null;
+  todayCheckOutTime?: string | null;
 }
 
 interface Filters {
@@ -33,21 +33,54 @@ interface Filters {
   position: string;
   workLocation: string;
   role: string;
+  status: "All" | "Active" | "Inactive";
   joinDateRange: {
     start: string;
     end: string;
   };
 }
 
+type EmployeeStatusAction = "deactivate" | "reactivate";
+
+function formatPunchTime(iso: string | null | undefined) {
+  if (!iso || typeof iso !== "string") return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
+
 export default function Employees() {
+  const { user, hasPermission } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
+  const [deactivatingEmployeeId, setDeactivatingEmployeeId] = useState<number | null>(null);
+  const [reactivatingEmployeeId, setReactivatingEmployeeId] = useState<number | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    employee: Employee | null;
+    action: EmployeeStatusAction | null;
+  }>({
+    isOpen: false,
+    employee: null,
+    action: null,
+  });
+  const [messageDialog, setMessageDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    tone: "success" | "error";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    tone: "success",
+  });
   const [filters, setFilters] = useState<Filters>({
     department: "All",
     position: "All",
     workLocation: "All",
     role: "All",
+    status: "All",
     joinDateRange: {
       start: "",
       end: "",
@@ -55,17 +88,31 @@ export default function Employees() {
   });
 
   const navigate = useNavigate();
+  const currentUserRole = user?.role?.toLowerCase() || "";
+  const isCurrentUserAdmin = currentUserRole === "admin";
+  const isCurrentUserHr = currentUserRole === "hr";
+  const isCurrentUserManager = currentUserRole === "manager";
+  const canAddEmployee = hasPermission("manage", "employees");
+  const canDeleteEmployees = isCurrentUserAdmin || isCurrentUserHr;
+
+  const canManageEmployeeStatus = (employee: Employee) => {
+    if (!canDeleteEmployees) return false;
+    const targetRole = employee.role?.toLowerCase?.() || "";
+
+    // HR cannot manage Admin accounts; Admin remains top-level.
+    if (isCurrentUserHr && targetRole === "admin") return false;
+
+    // Prevent self deactivation/reactivation actions from this screen.
+    if (user?.id && employee.id === Number(user.id)) return false;
+
+    return true;
+  };
 
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/auth/employees`);
-        if (response.ok) {
-          const data: Employee[] = await response.json();
-          setEmployees(data);
-        } else {
-          console.error("Failed to fetch employees");
-        }
+        const response = await api.get<Employee[]>("/auth/employees");
+        setEmployees(response.data);
       } catch (error) {
         console.error("Error fetching employees:", error);
       }
@@ -84,6 +131,7 @@ export default function Employees() {
     "All",
     ...new Set(employees.map((e) => e.workLocation)),
   ];
+  const uniqueRoles = ["All", ...new Set(employees.map((e) => e.role))];
 
   // Reset all filters
   const resetFilters = () => {
@@ -92,6 +140,7 @@ export default function Employees() {
       position: "All",
       workLocation: "All",
       role: "All",
+      status: "All",
       joinDateRange: {
         start: "",
         end: "",
@@ -122,6 +171,10 @@ export default function Employees() {
       filters.role === "All" ||
       employee.role === filters.role;
 
+    const matchesStatus =
+      filters.status === "All" ||
+      (filters.status === "Active" ? employee.active : !employee.active);
+
     const matchesDateRange = () => {
       if (!filters.joinDateRange.start && !filters.joinDateRange.end)
         return true;
@@ -148,318 +201,674 @@ export default function Employees() {
       matchesDepartment &&
       matchesPosition &&
       matchesLocation &&
+      matchesRole &&
+      matchesStatus &&
       matchesDateRange()
     );
   });
 
+  const readErrorMessage = async (response: Response) => {
+    const errorMessage = "Unable to update employee status. Please try again.";
+    const responseBody = await response.text();
+    if (!responseBody) return errorMessage;
+
+    try {
+      const payload = JSON.parse(responseBody);
+      if (typeof payload === "string") return payload;
+      if (payload?.message) return payload.message;
+      if (payload?.error) return payload.error;
+      return errorMessage;
+    } catch {
+      return responseBody;
+    }
+  };
+
+  const handleDeactivateEmployee = (employee: Employee) => {
+    if (!canManageEmployeeStatus(employee)) return;
+    setConfirmDialog({
+      isOpen: true,
+      employee,
+      action: "deactivate",
+    });
+  };
+
+  const handleReactivateEmployee = (employee: Employee) => {
+    if (!canManageEmployeeStatus(employee)) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      employee,
+      action: "reactivate",
+    });
+  };
+
+  const handleConfirmEmployeeStatusChange = async () => {
+    if (!confirmDialog.employee || !confirmDialog.action) return;
+
+    const { employee, action } = confirmDialog;
+    const isDeactivation = action === "deactivate";
+
+    if (isDeactivation) {
+      setDeactivatingEmployeeId(employee.id);
+    } else {
+      setReactivatingEmployeeId(employee.id);
+    }
+
+    try {
+      const accessToken =
+        localStorage.getItem("accessToken") || localStorage.getItem("token");
+
+      const response = await fetch(
+        `${API_BASE_URL}/auth/employees/${employee.id}/${isDeactivation ? "deactivate" : "reactivate"}`,
+        {
+          method: "PATCH",
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await readErrorMessage(response);
+        throw new Error(errorMessage);
+      }
+
+      setEmployees((prev) =>
+        prev.map((item) =>
+          item.id === employee.id ? { ...item, active: !isDeactivation } : item
+        )
+      );
+
+      setMessageDialog({
+        isOpen: true,
+        title: isDeactivation ? "Employee Deactivated" : "Employee Reactivated",
+        message: isDeactivation
+          ? `${employee.firstName} ${employee.lastName} has been deactivated successfully.`
+          : `${employee.firstName} ${employee.lastName} has been reactivated successfully.`,
+        tone: "success",
+      });
+    } catch (error) {
+      console.error(`Error ${action} employee:`, error);
+      setMessageDialog({
+        isOpen: true,
+        title: "Action Failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : `Unable to ${action} employee. Please try again.`,
+        tone: "error",
+      });
+    } finally {
+      if (isDeactivation) {
+        setDeactivatingEmployeeId(null);
+      } else {
+        setReactivatingEmployeeId(null);
+      }
+      setConfirmDialog({
+        isOpen: false,
+        employee: null,
+        action: null,
+      });
+    }
+  };
+
+  const toCsvValue = (value: unknown) => {
+    const asString = String(value ?? "");
+    return `"${asString.replace(/"/g, '""')}"`;
+  };
+
+  const exportFilteredEmployees = () => {
+    if (!filteredEmployees.length) {
+      setMessageDialog({
+        isOpen: true,
+        title: "No Data to Export",
+        message: "Apply different filters or add employees before exporting.",
+        tone: "error",
+      });
+      return;
+    }
+
+    const headers = [
+      "Employee ID",
+      "First Name",
+      "Last Name",
+      "Email",
+      "Phone",
+      "Department",
+      "Role",
+      "Designation",
+      "Join Date",
+      "Work Location",
+      "Status",
+    ];
+
+    const rows = filteredEmployees.map((employee) => [
+      employee.code || `EMP-${employee.id}`,
+      employee.firstName,
+      employee.lastName,
+      employee.username,
+      employee.phone,
+      employee.department,
+      employee.role,
+      employee.position,
+      new Date(employee.joinDate).toLocaleDateString(),
+      employee.workLocation,
+      employee.active ? "Active" : "Inactive",
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => toCsvValue(cell)).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `employees-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const totalEmployees = employees.length;
+  const activeEmployees = employees.filter((employee) => employee.active).length;
+  const inactiveEmployees = totalEmployees - activeEmployees;
+  const joinedThisMonth = employees.filter((employee) => {
+    const joinDate = new Date(employee.joinDate);
+    const today = new Date();
+    return (
+      joinDate.getMonth() === today.getMonth() &&
+      joinDate.getFullYear() === today.getFullYear()
+    );
+  }).length;
+  const hasAnyFiltersApplied =
+    filters.department !== "All" ||
+    filters.position !== "All" ||
+    filters.workLocation !== "All" ||
+    filters.role !== "All" ||
+    filters.status !== "All" ||
+    Boolean(filters.joinDateRange.start) ||
+    Boolean(filters.joinDateRange.end) ||
+    Boolean(searchTerm.trim());
+  const isDialogActionLoading =
+    (confirmDialog.action === "deactivate" &&
+      deactivatingEmployeeId === confirmDialog.employee?.id) ||
+    (confirmDialog.action === "reactivate" &&
+      reactivatingEmployeeId === confirmDialog.employee?.id);
+
+  if (isCurrentUserAdmin) {
+    return (
+      <div className="mx-auto max-w-3xl rounded-md border border-amber-200 bg-amber-50 p-6 text-amber-800">
+        <h1 className="text-xl font-semibold">Employee data is restricted</h1>
+        <p className="mt-2 text-sm">
+          Main admin can only access organization-level information.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-[100%] mx-auto px-0">
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Employees</h1>
-          <p className="mt-2 text-lg text-gray-600">
-            Manage your team members and their access.
-          </p>
-        </div>
-        <div className="mt-4 sm:mt-0">
-          <button
-            onClick={() => navigate("/employees/add")}
-            className="btn-primary inline-flex items-center"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Employee
-          </button>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-        {[
-          {
-            label: "Total Employees",
-            value: employees.length || "0",
-            icon: Users,
-          },
-          {
-            label: "Departments",
-            value: uniqueDepartments.length - 1 || "0",
-            icon: Building2,
-          },
-          {
-            label: "New This Month",
-            value:
-              employees.filter(
-                (e) => new Date(e.joinDate).getMonth() === new Date().getMonth()
-              ).length || "0",
-            icon: Plus,
-          },
-        ].map((stat) => (
-          <div key={stat.label} className="stat-card p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-700">
-                <stat.icon className="h-6 w-6 text-white" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">
-                  {stat.label}
-                </p>
-                <p className="text-2xl font-semibold text-gray-900">
-                  {stat.value}
-                </p>
-              </div>
+    <div className="mx-auto max-w-[100%] space-y-4 px-0">
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">
+              {isCurrentUserManager ? "My Team" : "Employee Management"}
+            </h1>
+              <p className="mt-1 text-sm text-sky-50">
+                {isCurrentUserManager
+                  ? "Your direct reports, access status, and today’s punch in / punch out."
+                  : "Manage employee records, access status, and directory visibility."}
+              </p>
             </div>
+            {canAddEmployee && (
+            <button
+              onClick={() => navigate("/employees/add")}
+              className="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-50"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Employee
+            </button>
+            )}
           </div>
-        ))}
-      </div>
+        </div>
 
-      {/* Employee Table */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="relative flex-1 max-w-md">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Total Employees</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{totalEmployees}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Active</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-700">{activeEmployees}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Inactive</p>
+            <p className="mt-1 text-2xl font-bold text-rose-700">{inactiveEmployees}</p>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-xs uppercase text-slate-500">Joined This Month</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{joinedThisMonth}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-4 py-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-md">
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <Search className="h-4 w-4 text-slate-400" />
               </div>
               <input
                 type="text"
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Search employees..."
+                className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-sky-500"
+                placeholder="Search by name, email, role, department..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex gap-3">
+            <div className="flex items-center gap-2">
               <button
-                className={`inline-flex items-center px-4 py-2 border rounded-lg text-sm font-medium ${
+                className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+                onClick={exportFilteredEmployees}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </button>
+              <button
+                className={`inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium ${
                   showFilters
-                    ? "border-indigo-500 text-indigo-600 bg-indigo-50"
-                    : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+                    ? "border-sky-500 bg-sky-50 text-sky-700"
+                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
                 }`}
                 onClick={() => setShowFilters(!showFilters)}
               >
-                <Filter className="h-4 w-4 mr-2" />
+                <Filter className="mr-2 h-4 w-4" />
                 Filters
               </button>
-              {(showFilters ||
-                Object.values(filters).some(
-                  (v) => v !== "All" && v !== ""
-                )) && (
+              {hasAnyFiltersApplied && (
                 <button
                   onClick={resetFilters}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-red-600 bg-white hover:bg-red-50"
+                  className="inline-flex items-center rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
                 >
-                  <X className="h-4 w-4 mr-2" />
+                  <X className="mr-2 h-4 w-4" />
                   Reset
                 </button>
               )}
             </div>
           </div>
 
-          {/* Filter Panel */}
-          {showFilters && (
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg max-w-3xl mx-auto">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Department
-                </label>
-                <select
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  value={filters.department}
-                  onChange={(e) =>
-                    setFilters({ ...filters, department: e.target.value })
-                  }
-                >
-                  {uniqueDepartments.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Position
-                </label>
-                <select
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  value={filters.position}
-                  onChange={(e) =>
-                    setFilters({ ...filters, position: e.target.value })
-                  }
-                >
-                  {uniquePositions.map((pos) => (
-                    <option key={pos} value={pos}>
-                      {pos}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Work Location
-                </label>
-                <select
-                  className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                  value={filters.workLocation}
-                  onChange={(e) =>
-                    setFilters({ ...filters, workLocation: e.target.value })
-                  }
-                >
-                  {uniqueLocations.map((loc) => (
-                    <option key={loc} value={loc}>
-                      {loc}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Join Date Range
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    value={filters.joinDateRange.start}
-                    onChange={(e) =>
-                      setFilters({
-                        ...filters,
-                        joinDateRange: {
-                          ...filters.joinDateRange,
-                          start: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                  <input
-                    type="date"
-                    className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    value={filters.joinDateRange.end}
-                    onChange={(e) =>
-                      setFilters({
-                        ...filters,
-                        joinDateRange: {
-                          ...filters.joinDateRange,
-                          end: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </div>
-              </div>
+          {hasAnyFiltersApplied && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                Showing {filteredEmployees.length} of {employees.length}
+              </span>
+              {filters.department !== "All" && (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                  Department: {filters.department}
+                </span>
+              )}
+              {filters.position !== "All" && (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                  Position: {filters.position}
+                </span>
+              )}
+              {filters.workLocation !== "All" && (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                  Location: {filters.workLocation}
+                </span>
+              )}
+              {filters.role !== "All" && (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                  Role: {filters.role}
+                </span>
+              )}
+              {filters.status !== "All" && (
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                  Status: {filters.status}
+                </span>
+              )}
             </div>
           )}
         </div>
 
+        {showFilters && (
+          <div className="grid grid-cols-1 gap-3 border-b border-slate-200 bg-slate-50 px-4 py-4 sm:grid-cols-2 lg:grid-cols-6">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                Department
+              </label>
+              <select
+                className="w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-700"
+                value={filters.department}
+                onChange={(e) => setFilters({ ...filters, department: e.target.value })}
+              >
+                {uniqueDepartments.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                Position
+              </label>
+              <select
+                className="w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-700"
+                value={filters.position}
+                onChange={(e) => setFilters({ ...filters, position: e.target.value })}
+              >
+                {uniquePositions.map((pos) => (
+                  <option key={pos} value={pos}>
+                    {pos}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                Work Location
+              </label>
+              <select
+                className="w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-700"
+                value={filters.workLocation}
+                onChange={(e) => setFilters({ ...filters, workLocation: e.target.value })}
+              >
+                {uniqueLocations.map((loc) => (
+                  <option key={loc} value={loc}>
+                    {loc}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                Role
+              </label>
+              <select
+                className="w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-700"
+                value={filters.role}
+                onChange={(e) => setFilters({ ...filters, role: e.target.value })}
+              >
+                {uniqueRoles.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                Employee Status
+              </label>
+              <select
+                className="w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-700"
+                value={filters.status}
+                onChange={(e) =>
+                  setFilters({
+                    ...filters,
+                    status: e.target.value as "All" | "Active" | "Inactive",
+                  })
+                }
+              >
+                <option value="All">All</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                Join Date Range
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  className="w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-700"
+                  value={filters.joinDateRange.start}
+                  onChange={(e) =>
+                    setFilters({
+                      ...filters,
+                      joinDateRange: {
+                        ...filters.joinDateRange,
+                        start: e.target.value,
+                      },
+                    })
+                  }
+                />
+                <input
+                  type="date"
+                  className="w-full rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-700"
+                  value={filters.joinDateRange.end}
+                  onChange={(e) =>
+                    setFilters({
+                      ...filters,
+                      joinDateRange: {
+                        ...filters.joinDateRange,
+                        end: e.target.value,
+                      },
+                    })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-100">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employee Name
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Employee
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employee Id
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Employee ID
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
                   Email
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact No
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Contact
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Join Date (MM/DD/YYYY)
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Join Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {isCurrentUserManager && (
+                  <>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                      Punch in (today)
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                      Punch out (today)
+                    </th>
+                  </>
+                )}
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
                   Designation
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
                   Department
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Work Location
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Location
                 </th>
-                <th className="px-6 py-3 relative text-right">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Actions
+                </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredEmployees.map((employee) => (
-                <tr
-                  key={employee.id}
-                  className="hover:bg-gray-50 transition-colors duration-200"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {employee.firstName} {employee.lastName}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{employee.id}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+            <tbody className="divide-y divide-slate-200 bg-white">
+              {filteredEmployees.length > 0 ? (
+                filteredEmployees.map((employee) => (
+                  <tr key={employee.id} className="hover:bg-slate-50">
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {employee.firstName} {employee.lastName}
+                      </p>
+                      <p className="text-xs text-slate-500">{employee.role}</p>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
+                      {employee.code || `EMP-${employee.id}`}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
                       {employee.username}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
                       {employee.phone}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
                       {new Date(employee.joinDate).toLocaleDateString()}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    </td>
+                    {isCurrentUserManager && (
+                      <>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
+                          {formatPunchTime(employee.todayCheckInTime)}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
+                          {formatPunchTime(employee.todayCheckOutTime)}
+                        </td>
+                      </>
+                    )}
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
                       {employee.position}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {employee.role}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
                       {employee.department}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span className="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
+                        <MapPin className="mr-1 h-3.5 w-3.5" />
+                        {employee.workLocation}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          employee.active
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-rose-50 text-rose-700"
+                        }`}
+                      >
+                        {employee.active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          onClick={() => navigate(`/selfservice/${employee.id}`)}
+                          className="text-sky-700 hover:text-sky-900"
+                        >
+                          View
+                        </button>
+                        {canManageEmployeeStatus(employee) &&
+                          (employee.active === false ? (
+                            <button
+                              onClick={() => handleReactivateEmployee(employee)}
+                              disabled={reactivatingEmployeeId === employee.id}
+                              className="inline-flex items-center text-emerald-600 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {reactivatingEmployeeId === employee.id
+                                ? "Reactivating..."
+                                : "Reactivate"}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleDeactivateEmployee(employee)}
+                              disabled={deactivatingEmployeeId === employee.id}
+                              className="inline-flex items-center text-rose-600 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <Trash2 className="mr-1 h-4 w-4" />
+                              {deactivatingEmployeeId === employee.id
+                                ? "Deactivating..."
+                                : "Deactivate"}
+                            </button>
+                          ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={isCurrentUserManager ? 12 : 10} className="px-4 py-10 text-center">
+                    <div className="mx-auto flex max-w-md flex-col items-center">
+                      <Users className="h-8 w-8 text-slate-300" />
+                      <p className="mt-2 text-sm font-semibold text-slate-700">
+                        {isCurrentUserManager
+                          ? "No direct reports match your search (or none are assigned to you yet)."
+                          : "No employees match your search criteria"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {isCurrentUserManager
+                          ? "HR can assign employees to you as their reporting manager."
+                          : "Try changing filters or reset them to view all employees."}
+                      </p>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      <MapPin className="h-4 w-4 text-blue-500 mr-2" />
-                      {employee.workLocation}
-                    </div>
-                  </td>
-                  {/* <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => navigate(`/employees/edit/${employee.code}`)}
-                      className="text-indigo-600 hover:text-indigo-900"
-                    >
-                      Edit
-                    </button>
-                  </td> */}
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => navigate(`/selfservice/${employee.id}`)}
-                      className="text-indigo-600 hover:text-indigo-900"
-                    >
-                      View
-                    </button>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
+
+      <CommonDialog
+        isOpen={confirmDialog.isOpen && Boolean(confirmDialog.employee) && Boolean(confirmDialog.action)}
+        title={
+          confirmDialog.action === "deactivate"
+            ? "Confirm Deactivation"
+            : "Confirm Reactivation"
+        }
+        message={
+          confirmDialog.employee && confirmDialog.action
+            ? confirmDialog.action === "deactivate"
+              ? `Deactivate ${confirmDialog.employee.firstName} ${confirmDialog.employee.lastName}? Deactivated users cannot login or perform actions.`
+              : `Reactivate ${confirmDialog.employee.firstName} ${confirmDialog.employee.lastName}? They will be able to login and perform actions again.`
+            : ""
+        }
+        tone={confirmDialog.action === "deactivate" ? "error" : "success"}
+        cancelText="Cancel"
+        confirmText={
+          isDialogActionLoading
+            ? confirmDialog.action === "deactivate"
+              ? "Deactivating..."
+              : "Reactivating..."
+            : confirmDialog.action === "deactivate"
+            ? "Confirm Deactivate"
+            : "Confirm Reactivate"
+        }
+        onClose={() =>
+          setConfirmDialog({ isOpen: false, employee: null, action: null })
+        }
+        onConfirm={handleConfirmEmployeeStatusChange}
+        isLoading={isDialogActionLoading}
+      />
+
+      <CommonDialog
+        isOpen={messageDialog.isOpen}
+        title={messageDialog.title}
+        message={messageDialog.message}
+        tone={messageDialog.tone}
+        confirmText="OK"
+        hideCancel
+        onClose={() =>
+          setMessageDialog({
+            isOpen: false,
+            title: "",
+            message: "",
+            tone: "success",
+          })
+        }
+      />
     </div>
   );
 }

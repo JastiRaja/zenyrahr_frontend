@@ -13,7 +13,7 @@ import {
   Tag,
 } from 'antd';
 import { EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import api from '../../api/axios';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
@@ -45,7 +45,7 @@ const PayrollGeneration: React.FC = () => {
   const fetchPayrolls = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/payroll');
+      const response = await api.get('/api/payroll');
       setPayrolls(response.data);
     } catch (error) {
       message.error('Failed to fetch payrolls');
@@ -64,7 +64,7 @@ const PayrollGeneration: React.FC = () => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const approvedBy = encodeURIComponent(`${user.firstName} ${user.lastName}`);
-      await axios.post(`/api/payroll/${id}/approve?approvedBy=${approvedBy}`);
+      await api.post(`/api/payroll/${id}/approve?approvedBy=${approvedBy}`);
       message.success('Payroll approved successfully');
       fetchPayrolls();
     } catch (error) {
@@ -76,7 +76,7 @@ const PayrollGeneration: React.FC = () => {
     if (!selectedPayrollId) return;
 
     try {
-      await axios.post(`/api/payroll/${selectedPayrollId}/reject`, {
+      await api.post(`/api/payroll/${selectedPayrollId}/reject`, {
         approvedBy: localStorage.getItem('username'),
         rejectionReason: values.rejectionReason,
       });
@@ -90,7 +90,7 @@ const PayrollGeneration: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      await axios.delete(`/api/payroll/${id}`);
+      await api.delete(`/api/payroll/${id}`);
       message.success('Payroll deleted successfully');
       fetchPayrolls();
     } catch (error) {
@@ -101,7 +101,7 @@ const PayrollGeneration: React.FC = () => {
   const handleSubmit = async (values: any) => {
     try {
       const monthYear = values.monthYear.format('YYYY-MM');
-      await axios.post('/api/payroll/generate', {
+      await api.post('/api/payroll/generate', {
         monthYear,
         generatedBy: localStorage.getItem('username'),
       });

@@ -32,8 +32,8 @@ export default function Performance() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Performance Management</h1>
-        <p className="mt-2 text-lg text-gray-600">
+        <h1 className="text-3xl font-bold text-slate-900">Performance Management</h1>
+        <p className="mt-2 text-lg text-slate-600">
           Track your performance metrics and development goals
         </p>
       </div>
@@ -52,9 +52,9 @@ export default function Performance() {
                 <item.icon className="h-6 w-6 text-white" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">{item.name}</p>
+                <p className="text-sm font-medium text-slate-500">{item.name}</p>
                 <div className="flex items-center">
-                  <p className="text-2xl font-semibold text-gray-900">{item.value}</p>
+                  <p className="text-2xl font-semibold text-slate-900">{item.value}</p>
                   <span className="ml-2 text-sm font-medium text-green-600">
                     {item.trend}
                   </span>
@@ -68,18 +68,18 @@ export default function Performance() {
       {/* Current Goals */}
       <div className="card p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">Current Goals</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Current Goals</h2>
           <button className="btn-secondary text-sm">
             Add New Goal
           </button>
         </div>
         <div className="space-y-4">
           {performanceData.goals.map((goal) => (
-            <div key={goal.id} className="bg-white p-4 rounded-lg border border-gray-100 hover:shadow-md transition-shadow duration-200">
+            <div key={goal.id} className="bg-white p-4 rounded-xl border border-slate-200/70 hover:shadow-md transition-shadow duration-200">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center">
-                    <h3 className="text-lg font-semibold text-gray-900">{goal.title}</h3>
+                    <h3 className="text-lg font-semibold text-slate-900">{goal.title}</h3>
                     <span className={`ml-3 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       goal.status === 'On Track' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                     }`}>
@@ -87,11 +87,11 @@ export default function Performance() {
                     </span>
                   </div>
                   <div className="mt-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <div className="flex justify-between text-sm text-slate-600 mb-1">
                       <span>Progress</span>
                       <span>{goal.progress}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-slate-200 rounded-full h-2">
                       <div
                         className="bg-indigo-600 h-2 rounded-full"
                         style={{ width: `${goal.progress}%` }}
@@ -99,7 +99,7 @@ export default function Performance() {
                     </div>
                   </div>
                 </div>
-                <button className="ml-4 p-2 text-gray-400 hover:text-gray-500">
+                <button className="ml-4 p-2 text-slate-400 hover:text-slate-500">
                   <ChevronRight className="h-5 w-5" />
                 </button>
               </div>
@@ -114,8 +114,8 @@ export default function Performance() {
           <div key={review.id} className="card p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">{review.type}</h3>
-                <p className="text-sm text-gray-500">{review.date}</p>
+                <h3 className="text-lg font-semibold text-slate-900">{review.type}</h3>
+                <p className="text-sm text-slate-500">{review.date}</p>
               </div>
               <div className="flex items-center">
                 {[...Array(5)].map((_, index) => (
@@ -132,7 +132,7 @@ export default function Performance() {
             </div>
             <div className="space-y-4">
               <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Strengths</h4>
+                <h4 className="text-sm font-medium text-slate-900 mb-2">Strengths</h4>
                 <div className="flex flex-wrap gap-2">
                   {review.strengths.map((strength, index) => (
                     <span
@@ -146,7 +146,7 @@ export default function Performance() {
                 </div>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Areas for Improvement</h4>
+                <h4 className="text-sm font-medium text-slate-900 mb-2">Areas for Improvement</h4>
                 <div className="flex flex-wrap gap-2">
                   {review.improvements.map((improvement, index) => (
                     <span
@@ -166,7 +166,7 @@ export default function Performance() {
 
       {/* Skills Assessment */}
       <div className="card p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">Skills Assessment</h2>
+        <h2 className="text-lg font-semibold text-slate-900 mb-6">Skills Assessment</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
             { skill: 'Technical Skills', rating: 90 },
@@ -176,10 +176,10 @@ export default function Performance() {
           ].map((skill) => (
             <div key={skill.skill} className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-sm font-medium text-gray-600">{skill.skill}</span>
-                <span className="text-sm font-medium text-gray-900">{skill.rating}%</span>
+                <span className="text-sm font-medium text-slate-600">{skill.skill}</span>
+                <span className="text-sm font-medium text-slate-900">{skill.rating}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-slate-200 rounded-full h-2">
                 <div
                   className="bg-indigo-600 h-2 rounded-full"
                   style={{ width: `${skill.rating}%` }}
