@@ -1,5 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { User, Role, rolePermissions, resolvePermissionRole } from "../types/auth";
+import {
+  User,
+  Role,
+  getAllPermissions,
+  hasPermission as userHasPermission,
+} from "../types/auth";
 
 interface AuthContextType {
   user: User | null;
@@ -100,16 +105,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const hasPermission = (action: string, subject: string) => {
     if (!user) return false;
-
-    const permissionRole = resolvePermissionRole(user.role);
-    const userPermissions = rolePermissions[permissionRole];
-
-    return userPermissions.some(
-      (permission) =>
-        (permission.action === "manage" && permission.subject === "all") ||
-        (permission.action === action && permission.subject === subject) ||
-        (permission.action === "manage" && permission.subject === subject)
-    );
+    return userHasPermission(getAllPermissions(user.role), action, subject);
   };
 
   return (

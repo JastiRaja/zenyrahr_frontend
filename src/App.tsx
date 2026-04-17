@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
+import ModuleAccessRoute from "./components/ModuleAccessRoute";
 import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import AddEmployee from "./pages/employees/AddEmployee";
@@ -16,6 +17,7 @@ import Recruitment from "./pages/Recruitment";
 import PostJob from "./pages/recruitment/PostJob";
 import Timesheet from "./pages/Timesheet";
 import SubmitTimesheet from "./pages/timesheet/SubmitTimesheet";
+import MyProjects from "./pages/timesheet/MyProjects";
 import TimesheetApprovals from "./pages/approvals/TimesheetApprovals";
 import Leave from "./pages/Leave";
 import RequestLeave from "./pages/leave/RequestLeave";
@@ -87,97 +89,137 @@ export default function App() {
               <Route
                 path="employees"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "read", subject: "employees" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["employeeManagementEnabled"]}
+                    loadingMessage="Loading employee management access..."
                   >
-                    <Employees />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "read", subject: "employees" },
+                      ]}
+                    >
+                      <Employees />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="employees/add"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "manage", subject: "employees" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["employeeManagementEnabled"]}
+                    loadingMessage="Loading employee management access..."
                   >
-                    <AddEmployee />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "manage", subject: "employees" },
+                      ]}
+                    >
+                      <AddEmployee />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="/admin-leave/requests"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "approve", subject: "leave" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["leaveManagementEnabled"]}
+                    loadingMessage="Loading leave access..."
                   >
-                    <AdminLeaveRequests />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "approve", subject: "leave" },
+                      ]}
+                    >
+                      <AdminLeaveRequests />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="/admin-leave/balance"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "manage", subject: "leave-balance" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["leaveManagementEnabled"]}
+                    loadingMessage="Loading leave access..."
                   >
-                    <AdminLeaveBalances />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "manage", subject: "leave-balance" },
+                      ]}
+                    >
+                      <AdminLeaveBalances />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="/admin-leave/policies"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "manage", subject: "leave-policies" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["leaveManagementEnabled"]}
+                    loadingMessage="Loading leave access..."
                   >
-                    <LeavePolicies />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "manage", subject: "leave-policies" },
+                      ]}
+                    >
+                      <LeavePolicies />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="/admin-leave/types" // ✅ New Leave Types Page Route
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "manage", subject: "leave-types" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["leaveManagementEnabled"]}
+                    loadingMessage="Loading leave access..."
                   >
-                    <LeaveTypeAdd />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "manage", subject: "leave-types" },
+                      ]}
+                    >
+                      <LeaveTypeAdd />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="/admin/assign-manager"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "manage", subject: "employees" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["employeeManagementEnabled"]}
+                    loadingMessage="Loading employee management access..."
                   >
-                    <AssignManager />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "manage", subject: "employees" },
+                      ]}
+                    >
+                      <AssignManager />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="/admin/manage-entities"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "manage", subject: "employees" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["employeeManagementEnabled"]}
+                    loadingMessage="Loading employee management access..."
                   >
-                    <ManageEntities />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "manage", subject: "employees" },
+                      ]}
+                    >
+                      <ManageEntities />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
@@ -192,8 +234,28 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/selfservice/:id" element={<SelfService />} />
-              <Route path="self-service" element={<SelfService />} />
+              <Route
+                path="/selfservice/:id"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["selfServiceEnabled"]}
+                    loadingMessage="Loading self-service access..."
+                  >
+                    <SelfService />
+                  </ModuleAccessRoute>
+                }
+              />
+              <Route
+                path="self-service"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["selfServiceEnabled"]}
+                    loadingMessage="Loading self-service access..."
+                  >
+                    <SelfService />
+                  </ModuleAccessRoute>
+                }
+              />
               <Route
                 path="/service-request"
                 element={<ServiceRequest />}
@@ -211,110 +273,196 @@ export default function App() {
               <Route
                 path="recruitment"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "read", subject: "employees" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["recruitmentEnabled"]}
+                    loadingMessage="Loading recruitment access..."
                   >
-                    <Recruitment />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "read", subject: "employees" },
+                      ]}
+                    >
+                      <Recruitment />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="recruitment/post"
                 element={
-                  <RoleBasedRoute allowedRoles={["HR"]}>
-                    <ProtectedRoute
-                      requiredPermissions={[
-                        { action: "manage", subject: "recruitment" },
-                      ]}
-                    >
-                      <PostJob />
-                    </ProtectedRoute>
-                  </RoleBasedRoute>
+                  <ModuleAccessRoute
+                    requiredFlags={["recruitmentEnabled"]}
+                    loadingMessage="Loading recruitment access..."
+                  >
+                    <RoleBasedRoute allowedRoles={["HR"]}>
+                      <ProtectedRoute
+                        requiredPermissions={[
+                          { action: "manage", subject: "recruitment" },
+                        ]}
+                      >
+                        <PostJob />
+                      </ProtectedRoute>
+                    </RoleBasedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="recruitment/jobs/:id"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "read", subject: "employees" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["recruitmentEnabled"]}
+                    loadingMessage="Loading recruitment access..."
                   >
-                    <RecruitmentJobDetails />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "read", subject: "employees" },
+                      ]}
+                    >
+                      <RecruitmentJobDetails />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="recruitment/referrals"
                 element={
-                  <ProtectedRoute requiredPermissions={[{ action: "manage", subject: "recruitment" }]}> 
-                    <ReferralRequests />
-                  </ProtectedRoute>
+                  <ModuleAccessRoute
+                    requiredFlags={["recruitmentEnabled"]}
+                    loadingMessage="Loading recruitment access..."
+                  >
+                    <ProtectedRoute requiredPermissions={[{ action: "manage", subject: "recruitment" }]}>
+                      <ReferralRequests />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
-              <Route path="timesheet" element={<Timesheet />} />
+              <Route
+                path="timesheet"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["timesheetEnabled"]}
+                    loadingMessage="Loading timesheet access..."
+                  >
+                    <Timesheet />
+                  </ModuleAccessRoute>
+                }
+              />
               <Route
                 path="timesheet/submit"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "submit", subject: "timesheet" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["timesheetEnabled"]}
+                    loadingMessage="Loading timesheet access..."
                   >
-                    <SubmitTimesheet />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "submit", subject: "timesheet" },
+                      ]}
+                    >
+                      <SubmitTimesheet />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
+                }
+              />
+              <Route
+                path="timesheet/projects"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["timesheetEnabled"]}
+                    loadingMessage="Loading timesheet access..."
+                  >
+                    <MyProjects />
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="timesheet/approvals"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "approve", subject: "timesheet" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["timesheetEnabled"]}
+                    loadingMessage="Loading timesheet access..."
                   >
-                    <TimesheetApprovals />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "approve", subject: "timesheet" },
+                      ]}
+                    >
+                      <TimesheetApprovals />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
-              <Route path="leave" element={<Leave />} />
+              <Route
+                path="leave"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["leaveManagementEnabled"]}
+                    loadingMessage="Loading leave access..."
+                  >
+                    <Leave />
+                  </ModuleAccessRoute>
+                }
+              />
               <Route
                 path="leave/summary"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "submit", subject: "leave" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["leaveManagementEnabled"]}
+                    loadingMessage="Loading leave access..."
                   >
-                    <LeaveSummary />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "submit", subject: "leave" },
+                      ]}
+                    >
+                      <LeaveSummary />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
                 path="leave/request"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "submit", subject: "leave" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["leaveManagementEnabled"]}
+                    loadingMessage="Loading leave access..."
                   >
-                    <RequestLeave />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "submit", subject: "leave" },
+                      ]}
+                    >
+                      <RequestLeave />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
-              <Route path="leave/holidays" element={<HolidayList />} />
+              <Route
+                path="leave/holidays"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["leaveManagementEnabled"]}
+                    loadingMessage="Loading leave access..."
+                  >
+                    <HolidayList />
+                  </ModuleAccessRoute>
+                }
+              />
               <Route
                 path="leave/approvals"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "approve", subject: "leave" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["leaveManagementEnabled"]}
+                    loadingMessage="Loading leave access..."
                   >
-                    <LeaveApprovals />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "approve", subject: "leave" },
+                      ]}
+                    >
+                      <LeaveApprovals />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route
@@ -341,15 +489,30 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="payroll" element={<PayrollLayout />}>
+              <Route
+                path="payroll"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["payrollEnabled"]}
+                    loadingMessage="Loading payroll access..."
+                  >
+                    <PayrollLayout />
+                  </ModuleAccessRoute>
+                }
+              >
                 <Route index element={<Payslips />} />
                 <Route path="payslips" element={<Payslips />} />
                 <Route
                   path="attendance"
                   element={
-                    <RoleBasedRoute allowedRoles={["ADMIN", "HR", "ORG_ADMIN"]}>
-                      <AttendanceManagement />
-                    </RoleBasedRoute>
+                    <ModuleAccessRoute
+                      requiredFlags={["attendanceEnabled"]}
+                      loadingMessage="Loading attendance access..."
+                    >
+                      <RoleBasedRoute allowedRoles={["ADMIN", "HR", "ORG_ADMIN"]}>
+                        <AttendanceManagement />
+                      </RoleBasedRoute>
+                    </ModuleAccessRoute>
                   }
                 />
                 <Route
@@ -378,21 +541,78 @@ export default function App() {
                   }
                 /> */}
               </Route>
-              <Route path="/payscale" element={<PayscaleManagement />} />
-              <Route path="/payroll" element={<PayrollGeneration />} />
-              <Route path="travel" element={<Travel />} />
-              <Route path="travel/new-trip" element={<NewTripRequest />} />
-              <Route path="travel/submit-expense" element={<SubmitExpense />} />
+              <Route
+                path="/payscale"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["payrollEnabled"]}
+                    loadingMessage="Loading payroll access..."
+                  >
+                    <PayscaleManagement />
+                  </ModuleAccessRoute>
+                }
+              />
+              <Route
+                path="/payroll"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["payrollEnabled"]}
+                    loadingMessage="Loading payroll access..."
+                  >
+                    <PayrollGeneration />
+                  </ModuleAccessRoute>
+                }
+              />
+              <Route
+                path="travel"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["travelEnabled", "expenseEnabled"]}
+                    match="any"
+                    loadingMessage="Loading travel and expense access..."
+                  >
+                    <Travel />
+                  </ModuleAccessRoute>
+                }
+              />
+              <Route
+                path="travel/new-trip"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["travelEnabled"]}
+                    loadingMessage="Loading travel access..."
+                  >
+                    <NewTripRequest />
+                  </ModuleAccessRoute>
+                }
+              />
+              <Route
+                path="travel/submit-expense"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["expenseEnabled"]}
+                    loadingMessage="Loading expense access..."
+                  >
+                    <SubmitExpense />
+                  </ModuleAccessRoute>
+                }
+              />
               <Route
                 path="travel/approvals"
                 element={
-                  <ProtectedRoute
-                    requiredPermissions={[
-                      { action: "approve", subject: "expenses" },
-                    ]}
+                  <ModuleAccessRoute
+                    requiredFlags={["travelEnabled", "expenseEnabled"]}
+                    match="any"
+                    loadingMessage="Loading travel and expense access..."
                   >
-                    <ExpenseApprovals />
-                  </ProtectedRoute>
+                    <ProtectedRoute
+                      requiredPermissions={[
+                        { action: "approve", subject: "expenses" },
+                      ]}
+                    >
+                      <ExpenseApprovals />
+                    </ProtectedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route path="wellness" element={<Wellness />} />
@@ -409,14 +629,39 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/job-openings" element={<JobOpenings />} />
-              <Route path="/job-openings/:id" element={<JobDetails />} />
+              <Route
+                path="/job-openings"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["recruitmentEnabled"]}
+                    loadingMessage="Loading recruitment access..."
+                  >
+                    <JobOpenings />
+                  </ModuleAccessRoute>
+                }
+              />
+              <Route
+                path="/job-openings/:id"
+                element={
+                  <ModuleAccessRoute
+                    requiredFlags={["recruitmentEnabled"]}
+                    loadingMessage="Loading recruitment access..."
+                  >
+                    <JobDetails />
+                  </ModuleAccessRoute>
+                }
+              />
               <Route
                 path="/admin/holidays"
                 element={
-                  <RoleBasedRoute allowedRoles={["HR", "ADMIN"]}>
-                    <AdminHolidays />
-                  </RoleBasedRoute>
+                  <ModuleAccessRoute
+                    requiredFlags={["holidayManagementEnabled"]}
+                    loadingMessage="Loading holiday management access..."
+                  >
+                    <RoleBasedRoute allowedRoles={["HR", "ADMIN"]}>
+                      <AdminHolidays />
+                    </RoleBasedRoute>
+                  </ModuleAccessRoute>
                 }
               />
               <Route

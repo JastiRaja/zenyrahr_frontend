@@ -12,24 +12,13 @@ import {
 } from "lucide-react";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
-
-type OrganizationMenuSettings = {
-  timesheetEnabled: boolean;
-  leaveManagementEnabled: boolean;
-};
-
-const defaultMenuSettings: OrganizationMenuSettings = {
-  timesheetEnabled: true,
-  leaveManagementEnabled: true,
-};
+import useOrganizationMenuSettings from "../hooks/useOrganizationMenuSettings";
 
 export default function SelfService() {
   const { id } = useParams<string>(); // Get the employee ID from the URL if present
   const navigate = useNavigate();
   const { user, hasPermission } = useAuth();
-  const isMainAdmin = (user?.role || "").toLowerCase() === "admin";
-  const [menuSettings, setMenuSettings] =
-    useState<OrganizationMenuSettings>(defaultMenuSettings);
+  const { menuSettings } = useOrganizationMenuSettings();
   const [personalInfo, setPersonalInfo] = useState({
     name: "",
     email: "",
@@ -41,30 +30,6 @@ export default function SelfService() {
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (isMainAdmin || !user) {
-      setMenuSettings(defaultMenuSettings);
-      return;
-    }
-    let cancelled = false;
-    const loadMenuSettings = async () => {
-      try {
-        const response = await api.get("/api/organizations/current/menu-settings");
-        if (cancelled) return;
-        setMenuSettings({
-          timesheetEnabled: response.data?.timesheetEnabled !== false,
-          leaveManagementEnabled: response.data?.leaveManagementEnabled !== false,
-        });
-      } catch {
-        if (!cancelled) setMenuSettings(defaultMenuSettings);
-      }
-    };
-    void loadMenuSettings();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, user?.role, isMainAdmin]);
 
   useEffect(() => {
     const fetchPersonalInfo = async (employeeId: string) => {

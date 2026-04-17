@@ -99,8 +99,8 @@ export default function Employees() {
     if (!canDeleteEmployees) return false;
     const targetRole = employee.role?.toLowerCase?.() || "";
 
-    // HR cannot manage Admin accounts; Admin remains top-level.
-    if (isCurrentUserHr && targetRole === "admin") return false;
+    // HR cannot manage admin or org admin accounts.
+    if (isCurrentUserHr && (targetRole === "admin" || targetRole === "org_admin")) return false;
 
     // Prevent self deactivation/reactivation actions from this screen.
     if (user?.id && employee.id === Number(user.id)) return false;

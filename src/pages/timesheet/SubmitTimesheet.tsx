@@ -12,10 +12,15 @@ export default function SubmitTimesheet() {
 
   // ✅ Check if editing an existing entry
   const editingEntry = location.state?.entry || null;
+  const preselectedProject = location.state?.preselectedProject || null;
 
   interface Project {
     id: number;
     projectName: string;
+    description?: string;
+    startDate?: string;
+    deadline?: string;
+    status?: string;
   }
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -26,7 +31,7 @@ export default function SubmitTimesheet() {
       hoursWorked: editingEntry?.hoursWorked || "",
       taskDescription: editingEntry?.taskDescription || "",
       comments: editingEntry?.comments || "",
-      projectId: editingEntry?.project?.id || "",
+      projectId: editingEntry?.project?.id || preselectedProject?.id || "",
       status: editingEntry?.status || "PENDING",
     },
   ]);
@@ -43,19 +48,29 @@ export default function SubmitTimesheet() {
     tone: "success",
     redirectOnClose: false,
   });
+  const selectedProject = projects.find(
+    (project) => Number(project.id) === Number(entries[0]?.projectId || "")
+  );
 
   // ✅ Fetch Projects from API
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const response = await api.get(`/api/projects`);
-        setProjects(response.data);
+        if (!user?.id) return;
+        const response = await api.get(`/auth/employees/${user.id}/projects`);
+        const assignedProjects = Array.isArray(response.data) ? response.data : [];
+        const activeProjects = assignedProjects.filter(
+          (project) =>
+            String(project?.status || "ACTIVE").toUpperCase() === "ACTIVE" ||
+            Number(project?.id) === Number(editingEntry?.project?.id)
+        );
+        setProjects(activeProjects);
       } catch (error) {
         console.error("❌ Error fetching projects:", error);
       }
     };
     fetchProjects();
-  }, []);
+  }, [user?.id, editingEntry?.project?.id]);
 
   // ✅ Handle Field Changes Properly
   const handleEntryChange = (
@@ -81,7 +96,7 @@ export default function SubmitTimesheet() {
         hoursWorked: "",
         taskDescription: "",
         comments: "",
-        projectId: "",
+        projectId: preselectedProject?.id || "",
         status: "PENDING",
       },
     ]);
@@ -195,6 +210,72 @@ export default function SubmitTimesheet() {
       </section>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {projects.length > 0 && (
+          <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">Assigned Projects</h2>
+              <span className="rounded-full bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-700">
+                {projects.length} active
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              {projects.map((project) => (
+                <button
+                  key={project.id}
+                  type="button"
+                  onClick={() =>
+                    setEntries((prevEntries) =>
+                      prevEntries.map((entry, entryIndex) =>
+                        entryIndex === 0
+                          ? { ...entry, projectId: String(project.id) }
+                          : entry
+                      )
+                    )
+                  }
+                  className={`rounded-md border p-3 text-left transition ${
+                    Number(project.id) === Number(entries[0]?.projectId || "")
+                      ? "border-sky-300 bg-sky-50"
+                      : "border-slate-200 bg-slate-50 hover:border-sky-200 hover:bg-sky-50/60"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{project.projectName}</p>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                      {String(project.status || "ACTIVE").toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-600">
+                    {project.description?.trim() || "No project description added yet."}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-slate-500">
+                    <span>Start: {project.startDate || "-"}</span>
+                    <span>Deadline: {project.deadline || "-"}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {selectedProject && (
+          <section className="rounded-md border border-sky-200 bg-sky-50 p-4 shadow-sm">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-sky-700">
+              Selected Project Details
+            </h2>
+            <p className="mt-2 text-base font-semibold text-slate-900">
+              {selectedProject.projectName}
+            </p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-700">
+              {selectedProject.description?.trim() || "No project description added yet."}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-600">
+              <span>Start: {selectedProject.startDate || "-"}</span>
+              <span>Deadline: {selectedProject.deadline || "-"}</span>
+              <span>Status: {String(selectedProject.status || "ACTIVE").toUpperCase()}</span>
+            </div>
+          </section>
+        )}
+
         {entries.map((entry, index) => (
           <div
             key={entry.code || index}

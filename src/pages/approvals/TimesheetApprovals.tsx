@@ -18,6 +18,11 @@ interface Employee {
   id: number;
   firstName: string;
   lastName: string;
+  reportingManager?: {
+    id: number;
+    firstName?: string;
+    lastName?: string;
+  } | null;
 }
 
 interface Project {
@@ -36,6 +41,9 @@ interface Timesheet {
   requiredComments: string;
   status: string;
   createdAt?: string;
+  currentApprovalLevel?: number;
+  maxApprovalLevel?: number;
+  canCurrentUserApprove?: boolean;
 }
 
 export default function TimesheetApprovals() {
@@ -72,31 +80,65 @@ export default function TimesheetApprovals() {
   const [decisionComment, setDecisionComment] = useState("");
 
   useEffect(() => {
-    if (!user?.id || (user.role !== "manager" && user.role !== "admin")) {
+    const role = String(user?.role || "").toLowerCase();
+    const canApproveTimesheets = ["manager", "hr", "org_admin"].includes(role);
+
+    if (!user?.id || !canApproveTimesheets) {
       setError(
-        "Unauthorized access. Only managers or admins can view this page."
+        "Unauthorized access. Only managers, HR, or organization admins can view this page."
       );
       return;
     }
 
-    const fetchTimesheets = async () => {
+    const fetchApprovalData = async () => {
       setLoading(true);
       try {
-        const response = await api.get(`/api/timesheet/employee/${user.id}`);
-        const timesheetsData: Timesheet[] = response.data;
+        const [employeeResponse, timesheetResponse] = await Promise.all([
+          api.get(`/auth/employees`),
+          api.get(`/api/timesheet`),
+        ]);
+
+        const employeesData: Employee[] = Array.isArray(employeeResponse.data)
+          ? employeeResponse.data
+          : [];
+        const timesheetsData: Timesheet[] = Array.isArray(timesheetResponse.data)
+          ? timesheetResponse.data
+          : [];
+
+        const currentUserId = Number(user.id);
+        const canViewAllTimesheets = ["hr", "org_admin"].includes(role);
+        const visibleEmployeeIds = canViewAllTimesheets
+          ? null
+          : new Set(
+              employeesData
+                .filter((employee) => employee.reportingManager?.id === currentUserId)
+                .map((employee) => employee.id)
+            );
+
+        const scopedTimesheets = canViewAllTimesheets
+          ? timesheetsData
+          : timesheetsData.filter((timesheet) =>
+              visibleEmployeeIds?.has(timesheet.employeeId)
+            );
+        const scopedEmployees = canViewAllTimesheets
+          ? employeesData
+          : employeesData.filter((employee) => visibleEmployeeIds?.has(employee.id));
+
+        setEmployees(scopedEmployees);
 
         const timesheetsWithEmployees = await Promise.all(
-          timesheetsData.map(async (ts) => {
+          scopedTimesheets.map(async (ts) => {
             if (!ts.employeeId) return ts;
 
             try {
+              const employee = employeesData.find((entry) => entry.id === ts.employeeId);
+              if (employee) {
+                return { ...ts, employee };
+              }
               const empResponse = await api.get(`/auth/employees/${ts.employeeId}`);
               return { ...ts, employee: empResponse.data };
-            } catch (err) {
-              console.error(
-                `Error fetching employee for ID ${ts.employeeId}:`,
-                err
-              );
+            } catch (employeeError) {
+              console.error(`Error fetching employee for ID ${ts.employeeId}:`, employeeError);
               return { ...ts, employee: null };
             }
           })
@@ -104,18 +146,26 @@ export default function TimesheetApprovals() {
 
         setTimesheets(timesheetsWithEmployees);
 
-        const latestDate: dayjs.Dayjs = timesheetsWithEmployees.reduce(
-          (latest: dayjs.Dayjs, entry: Timesheet) => {
-            const entryDate: dayjs.Dayjs = dayjs(entry.date);
-            return entryDate.isAfter(latest) ? entryDate : latest;
-          },
-          dayjs(timesheetsWithEmployees[0].date)
-        );
+        if (timesheetsWithEmployees.length > 0) {
+          const latestDate: dayjs.Dayjs = timesheetsWithEmployees.reduce(
+            (latest: dayjs.Dayjs, entry: Timesheet) => {
+              const entryDate: dayjs.Dayjs = dayjs(entry.date);
+              return entryDate.isAfter(latest) ? entryDate : latest;
+            },
+            dayjs(timesheetsWithEmployees[0].date)
+          );
 
-        const startOfWeek = latestDate.startOf("isoWeek").toDate();
-        const endOfWeek = latestDate.startOf("isoWeek").add(4, "day").toDate();
-        setStartDate(startOfWeek);
-        setEndDate(endOfWeek);
+          const startOfWeek = latestDate.startOf("isoWeek").toDate();
+          const endOfWeek = latestDate.startOf("isoWeek").add(4, "day").toDate();
+          setStartDate(startOfWeek);
+          setEndDate(endOfWeek);
+        } else {
+          const today = dayjs();
+          setStartDate(today.startOf("isoWeek").toDate());
+          setEndDate(today.startOf("isoWeek").add(4, "day").toDate());
+        }
+
+        setError(null);
       } catch (err) {
         setError("Failed to fetch timesheets.");
       } finally {
@@ -123,17 +173,7 @@ export default function TimesheetApprovals() {
       }
     };
 
-    const fetchEmployees = async () => {
-      try {
-        const response = await api.get(`/auth/employees`);
-        setEmployees(response.data);
-      } catch (err) {
-        console.error("Failed to fetch employees:", err);
-      }
-    };
-
-    fetchTimesheets();
-    fetchEmployees();
+    fetchApprovalData();
   }, [user]);
 
   useEffect(() => {
@@ -156,18 +196,35 @@ export default function TimesheetApprovals() {
         user.id
       }&approved=true&requiredComments=${encodeURIComponent(approvalComment)}`;
 
-      await api.put(apiUrl);
+      const response = await api.put<Timesheet>(apiUrl);
+      const updated = response.data;
 
       setTimesheets((prev) =>
         prev.map((ts) =>
           ts.id === id
-            ? { ...ts, status: "APPROVED", requiredComments: approvalComment }
+            ? {
+                ...ts,
+                ...updated,
+                employee: ts.employee,
+              }
             : ts
         )
       );
+      setSelectedTimesheet((prev) =>
+        prev && prev.id === id
+          ? {
+              ...prev,
+              ...updated,
+              employee: prev.employee,
+            }
+          : prev
+      );
 
       setConfirmationMessage({
-        text: "Timesheet Approved ✅",
+        text:
+          String(updated?.status || "").toUpperCase() === "APPROVED"
+            ? "Timesheet Approved ✅"
+            : `Level ${updated?.currentApprovalLevel || 2} pending for next approver ✅`,
         type: "approve",
       });
     } catch (error) {
@@ -187,14 +244,28 @@ export default function TimesheetApprovals() {
         user.id
       }&requiredComments=${encodeURIComponent(rejectionComment)}`;
 
-      await api.put(apiUrl);
+      const response = await api.put<Timesheet>(apiUrl);
+      const updated = response.data;
 
       setTimesheets((prev) =>
         prev.map((ts) =>
           ts.id === id
-            ? { ...ts, status: "REJECTED", requiredComments: rejectionComment }
+            ? {
+                ...ts,
+                ...updated,
+                employee: ts.employee,
+              }
             : ts
         )
+      );
+      setSelectedTimesheet((prev) =>
+        prev && prev.id === id
+          ? {
+              ...prev,
+              ...updated,
+              employee: prev.employee,
+            }
+          : prev
       );
 
       setConfirmationMessage({ text: "Timesheet Rejected ❌", type: "reject" });
@@ -551,6 +622,14 @@ export default function TimesheetApprovals() {
             <p className="text-sm text-slate-700">
               ⏳ Total Hours: {selectedTimesheet.hoursWorked} hrs
             </p>
+            {String(selectedTimesheet.status || "").toUpperCase() === "PENDING" &&
+              selectedTimesheet.currentApprovalLevel &&
+              selectedTimesheet.maxApprovalLevel && (
+                <p className="mt-1 text-xs font-semibold text-sky-700">
+                  Approval Stage: Level {selectedTimesheet.currentApprovalLevel} of{" "}
+                  {selectedTimesheet.maxApprovalLevel}
+                </p>
+              )}
             <p className="mt-3 text-sm font-semibold text-slate-900">Task Description:</p>
             <p className="text-slate-600">{selectedTimesheet.description}</p>
             <p className="mt-2 text-sm font-semibold text-slate-900">Comments:</p>
@@ -558,7 +637,8 @@ export default function TimesheetApprovals() {
               {selectedTimesheet.requiredComments || "No comments provided."}
             </p>
 
-            {selectedTimesheet.status === "PENDING" && (
+            {selectedTimesheet.status === "PENDING" &&
+              selectedTimesheet.canCurrentUserApprove !== false && (
               <div className="mt-4 flex space-x-3">
                 <button
                   className="rounded-md bg-emerald-600 p-2 text-white hover:bg-emerald-700"
@@ -574,6 +654,12 @@ export default function TimesheetApprovals() {
                 </button>
               </div>
             )}
+            {selectedTimesheet.status === "PENDING" &&
+              selectedTimesheet.canCurrentUserApprove === false && (
+                <p className="mt-3 text-xs font-medium text-amber-700">
+                  Waiting for another approver at the current level.
+                </p>
+              )}
           </div>
         </div>
       )}

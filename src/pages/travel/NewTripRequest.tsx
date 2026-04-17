@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Calendar, FileText, Trash2, MapPin, Briefcase } from "react-feather";
 import { Plane } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext"; // Import the useAuth hook
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
+import api from "../../api/axios";
 
 export default function NewTripRequest() {
   const navigate = useNavigate();
@@ -91,43 +90,7 @@ export default function NewTripRequest() {
       // Append the allowed category for backend
       formDataToSend.append('category', 'travel_requests');
 
-      const response = await fetch(`${API_BASE_URL}/api/travel-requests`, {
-        method: "POST",
-        body: formDataToSend,
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json',
-          // Don't set Content-Type header - let the browser set it with the boundary
-        }
-      });
-
-      // Handle different response types
-      const contentType = response.headers.get("content-type");
-      let errorMessage = "Failed to submit request";
-
-      if (!response.ok) {
-        if (contentType && contentType.includes("application/json")) {
-          try {
-            const errorData = await response.json();
-            errorMessage = errorData.error || errorData.message || "Failed to submit request";
-          } catch (e) {
-            errorMessage = `Server error: ${response.status}`;
-          }
-        } else {
-          errorMessage = `Server error: ${response.status}`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      // Handle successful response
-      let result;
-      try {
-        result = await response.json();
-      } catch (e) {
-        console.warn("Response was not JSON:", e);
-        // If response is not JSON but request was successful, we can still proceed
-        result = { success: true };
-      }
+      await api.post("/api/travel-requests", formDataToSend);
 
       navigate("/travel");
     } catch (error) {

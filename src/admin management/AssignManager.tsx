@@ -168,6 +168,15 @@ const AssignManager = () => {
   ).length;
   const unassignedCount = assignments.length - assignedCount;
   const successMessage = message.startsWith("✅");
+  const selectMenuProps = {
+    menuPortalTarget:
+      typeof window !== "undefined" ? document.body : undefined,
+    menuPosition: "fixed" as const,
+    styles: {
+      menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
+      menu: (base: any) => ({ ...base, zIndex: 9999 }),
+    },
+  };
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -224,6 +233,7 @@ const AssignManager = () => {
             isMulti
             isSearchable
             className="rounded-md shadow-sm"
+            {...selectMenuProps}
           />
         </div>
 
@@ -238,6 +248,7 @@ const AssignManager = () => {
             placeholder="Search manager..."
             isSearchable
             className="rounded-md shadow-sm"
+            {...selectMenuProps}
           />
         </div>
       </div>
@@ -300,6 +311,7 @@ const AssignManager = () => {
                           }
                           placeholder="Select new manager..."
                           isSearchable
+                          {...selectMenuProps}
                         />
                       ) : (
                         item.managerDetails

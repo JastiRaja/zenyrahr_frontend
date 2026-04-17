@@ -46,6 +46,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
   org_admin: [
     { action: 'manage', subject: 'employees' },
     { action: 'read', subject: 'employees' },
+    { action: 'manage', subject: 'projects' },
     { action: 'manage', subject: 'leave-balance' },
     { action: 'manage', subject: 'leave' },
     { action: 'approve', subject: 'leave' },
@@ -56,6 +57,7 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
   hr: [
     { action: 'read', subject: 'employees' },
     { action: 'manage', subject: 'employees' },
+    { action: 'manage', subject: 'projects' },
     { action: 'manage', subject: 'leave-balance' },
     { action: 'manage', subject: 'recruitment' },
     { action: 'manage', subject: 'leave' },

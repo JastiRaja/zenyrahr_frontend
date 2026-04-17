@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Plus, Eye, X } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import CommonDialog from "../components/CommonDialog";
@@ -38,6 +38,7 @@ dayjs.extend(isSameOrBefore);
 
 interface Timesheet {
   id: number;
+  employeeId?: number;
   date: string;
   hoursWorked: number;
   taskDescription: string;
@@ -52,16 +53,44 @@ interface Timesheet {
   rejectionReason: string | null;
 }
 
+interface EmployeeRecord {
+  id: number;
+  firstName: string;
+  lastName: string;
+  reportingManager?: {
+    id: number;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+  } | null;
+}
+
+interface AssignedProject {
+  id: number;
+  projectName: string;
+  description?: string;
+  startDate?: string;
+  deadline?: string;
+  status?: string;
+}
+
 const calculateTotalHours = (timesheet: Timesheet): number => {
   return timesheet.hoursWorked || 0;
 };
 
 export default function Timesheet() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const currentUserRole = String(user?.role || "").toLowerCase();
+  const canViewAllTimesheets = ["hr", "org_admin"].includes(currentUserRole);
+  const canViewTeamTimesheets = currentUserRole === "manager";
+  const canSubmitTimesheet = hasPermission("submit", "timesheet");
+  const canWithdrawOwnEntries = !canViewAllTimesheets && !canViewTeamTimesheets;
 
   interface TimesheetEntry {
     id: number;
+    employeeId?: number;
+    employeeName?: string | null;
     date: string;
     hoursWorked: number;
     taskDescription: string;
@@ -96,6 +125,8 @@ export default function Timesheet() {
   const [reportingManager, setReportingManager] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [viewScopeLabel, setViewScopeLabel] = useState("My Timesheet");
+  const [assignedProjects, setAssignedProjects] = useState<AssignedProject[]>([]);
 
   // Fetch Employee Name & Reporting Manager
   useEffect(() => {
@@ -123,23 +154,83 @@ export default function Timesheet() {
     fetchUserData();
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id || canViewAllTimesheets || canViewTeamTimesheets) {
+      setAssignedProjects([]);
+      return;
+    }
+
+    const fetchAssignedProjects = async () => {
+      try {
+        const response = await api.get(`/auth/employees/${user.id}/projects`);
+        const rows = Array.isArray(response.data) ? response.data : [];
+        const activeRows = rows.filter(
+          (project) => String(project?.status || "ACTIVE").toUpperCase() === "ACTIVE"
+        );
+        setAssignedProjects(activeRows);
+      } catch (err) {
+        console.error("Error fetching assigned projects:", err);
+        setAssignedProjects([]);
+      }
+    };
+
+    void fetchAssignedProjects();
+  }, [user?.id, canViewAllTimesheets, canViewTeamTimesheets]);
+
   // Fetch All Timesheet Entries
   useEffect(() => {
     if (!user?.id) return;
 
     const fetchTimesheets = async () => {
       try {
-        const response = await api.get(`/api/timesheet/employee/${user.id}`);
+        setLoading(true);
+        const [employeeResponse, timesheetResponse] = await Promise.all([
+          api.get(`/auth/employees`),
+          canViewAllTimesheets || canViewTeamTimesheets
+            ? api.get(`/api/timesheet`)
+            : api.get(`/api/timesheet/employee/${user.id}`),
+        ]);
 
-        // Ensure response.data is an array
-        const timesheetData = Array.isArray(response.data) ? response.data : [];
+        const employeesData: EmployeeRecord[] = Array.isArray(employeeResponse.data)
+          ? employeeResponse.data
+          : [];
+        const allTimesheetData: Timesheet[] = Array.isArray(timesheetResponse.data)
+          ? timesheetResponse.data
+          : [];
+        const currentUserId = Number(user.id);
+        const managedEmployeeIds = new Set(
+          employeesData
+            .filter((employee) => employee.reportingManager?.id === currentUserId)
+            .map((employee) => employee.id)
+        );
+
+        const timesheetData = canViewAllTimesheets
+          ? allTimesheetData
+          : canViewTeamTimesheets
+            ? allTimesheetData.filter((timesheet) => managedEmployeeIds.has(Number(timesheet.employeeId)))
+            : allTimesheetData;
         
         const processedTimesheets = timesheetData.map((timesheet: Timesheet) => ({
           ...timesheet,
+          employeeName:
+            employeesData.find((employee) => employee.id === Number(timesheet.employeeId))
+              ? `${
+                  employeesData.find((employee) => employee.id === Number(timesheet.employeeId))!.firstName
+                } ${
+                  employeesData.find((employee) => employee.id === Number(timesheet.employeeId))!.lastName
+                }`
+              : null,
           totalHours: calculateTotalHours(timesheet),
         }));
 
         setAllEntries(processedTimesheets);
+        setViewScopeLabel(
+          canViewAllTimesheets
+            ? "Organization Timesheets"
+            : canViewTeamTimesheets
+              ? "Team Timesheets"
+              : "My Timesheet"
+        );
 
         // Set initial date range to the latest week only if there are timesheets
         if (processedTimesheets.length > 0) {
@@ -172,7 +263,7 @@ export default function Timesheet() {
     fetchTimesheets();
     const interval = setInterval(fetchTimesheets, 30000);
     return () => clearInterval(interval);
-  }, [user?.id]);
+  }, [user?.id, canViewAllTimesheets, canViewTeamTimesheets]);
 
   // Filter Entries Based on Selected Date Range
   useEffect(() => {
@@ -322,6 +413,16 @@ export default function Timesheet() {
     if (status === "WITHDRAWN") return "text-slate-700 bg-slate-100";
     return "text-rose-700 bg-rose-50";
   };
+  const summaryLabel = useMemo(() => {
+    if (canViewAllTimesheets) return "Scope";
+    if (canViewTeamTimesheets) return "Manager";
+    return "Employee";
+  }, [canViewAllTimesheets, canViewTeamTimesheets]);
+  const summaryValue = useMemo(() => {
+    if (canViewAllTimesheets) return "All employees";
+    if (canViewTeamTimesheets) return employeeName || "Manager";
+    return employeeName || "Loading...";
+  }, [canViewAllTimesheets, canViewTeamTimesheets, employeeName]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -330,27 +431,33 @@ export default function Timesheet() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
-                Timesheet Management
+                {viewScopeLabel}
               </h1>
               <p className="mt-1 text-sm text-sky-50">
-                Track and manage your work hours.
+                {canViewAllTimesheets
+                  ? "Review timesheets across the organization."
+                  : canViewTeamTimesheets
+                    ? "Review timesheets for employees assigned to you."
+                    : "Track and manage your work hours."}
               </p>
             </div>
-            <button
-              onClick={() => navigate("/timesheet/submit")}
-              className="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Time Entry
-            </button>
+            {canSubmitTimesheet && (
+              <button
+                onClick={() => navigate("/timesheet/submit")}
+                className="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Time Entry
+              </button>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
           <div className="px-4 py-3">
-            <p className="text-xs uppercase text-slate-500">Employee</p>
+            <p className="text-xs uppercase text-slate-500">{summaryLabel}</p>
             <p className="mt-1 truncate text-lg font-semibold text-slate-900">
-              {employeeName || "Loading..."}
+              {summaryValue}
             </p>
           </div>
           <div className="px-4 py-3">
@@ -423,6 +530,70 @@ export default function Timesheet() {
         </div>
       </section>
 
+      {!canViewAllTimesheets && !canViewTeamTimesheets && (
+        <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Assigned Projects</h2>
+              <p className="text-sm text-slate-500">
+                Review your project details before logging work.
+              </p>
+              <Link
+                to="/timesheet/projects"
+                className="mt-1 inline-block text-xs font-semibold text-sky-700 hover:text-sky-900"
+              >
+                Open full project list (active & completed)
+              </Link>
+            </div>
+            <span className="rounded-full bg-sky-100 px-2 py-1 text-xs font-semibold text-sky-700">
+              {assignedProjects.length} active
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {assignedProjects.length > 0 ? (
+              assignedProjects.map((project) => (
+                <button
+                  key={project.id}
+                  type="button"
+                  onClick={() =>
+                    navigate("/timesheet/submit", {
+                      state: {
+                        preselectedProject: {
+                          id: project.id,
+                          projectName: project.projectName,
+                        },
+                      },
+                    })
+                  }
+                  className="rounded-md border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-sky-300 hover:bg-sky-50"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{project.projectName}</p>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600">
+                      {String(project.status || "ACTIVE").toUpperCase()}
+                    </span>
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">
+                    {project.description?.trim() || "No project description added yet."}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+                    <span>Start: {project.startDate || "-"}</span>
+                    <span>Deadline: {project.deadline || "-"}</span>
+                  </div>
+                  <p className="mt-3 text-xs font-semibold text-sky-700">
+                    Click to add a time entry for this project
+                  </p>
+                </button>
+              ))
+            ) : (
+              <div className="rounded-md border border-dashed border-slate-300 p-4 text-sm text-slate-500 lg:col-span-2">
+                No active projects are assigned yet. Contact HR or your manager to assign a project before submitting time.
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {loading ? (
         <div className="rounded-md border border-slate-300 bg-white py-10 text-center text-slate-500">
           Loading timesheet entries...
@@ -456,6 +627,11 @@ export default function Timesheet() {
                 ) : (
                   dayEntries.map((entry) => (
                     <div key={entry.id} onClick={() => setSelectedEntry(entry)}>
+                      {entry.employeeName && (
+                        <p className="mt-2 text-xs font-semibold uppercase text-slate-500">
+                          {entry.employeeName}
+                        </p>
+                      )}
                       <p className="mt-2 truncate text-sm font-semibold text-slate-900">
                         {entry.project.projectName}
                       </p>
@@ -520,6 +696,9 @@ export default function Timesheet() {
             <p className="text-sm text-slate-700">
               {selectedEntry.hoursWorked} hours worked
             </p>
+            {selectedEntry.employeeName && (
+              <p className="text-sm text-slate-600">Employee: {selectedEntry.employeeName}</p>
+            )}
 
             <div className="mt-3 w-full break-words rounded-md border border-slate-200 bg-slate-50 p-4">
               <strong className="text-slate-900">Task Description:</strong>
@@ -560,7 +739,7 @@ export default function Timesheet() {
               </p>
             )}
 
-            {selectedEntry.status === "PENDING" && (
+            {selectedEntry.status === "PENDING" && canWithdrawOwnEntries && (
               <button
                 className="mt-4 rounded-md bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700"
                 onClick={() => setWithdrawDialogOpen(true)}

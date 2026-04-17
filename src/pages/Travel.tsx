@@ -14,6 +14,7 @@ import {
 import api from "../api/axios";
 import dayjs from "dayjs";
 import { useAuth } from "../contexts/AuthContext";
+import useOrganizationMenuSettings from "../hooks/useOrganizationMenuSettings";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
@@ -52,6 +53,7 @@ export default function Travel() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user, hasPermission } = useAuth();
+  const { menuSettings, loading: menuLoading } = useOrganizationMenuSettings();
   const [trips, setTrips] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [selectedExpense, setSelectedExpense] = useState<any | null>(null);
@@ -63,9 +65,19 @@ export default function Travel() {
   const [expenseApprovalError, setExpenseApprovalError] = useState("");
 
   useEffect(() => {
+    if (menuLoading) return;
     const fetchTripsAndExpenses = async () => {
       if (!user?.id) {
         console.error("User not authenticated");
+        return;
+      }
+
+      if (!menuSettings.travelEnabled && !menuSettings.expenseEnabled) {
+        setTrips([]);
+        setExpenses([]);
+        setSelectedTrip(null);
+        setSelectedExpense(null);
+        setLoading(false);
         return;
       }
 
@@ -75,17 +87,21 @@ export default function Travel() {
         // Determine which API endpoints to use based on user permissions
         const isManager = hasPermission("approve", "expenses");
         
-        const tripsEndpoint = isManager 
-          ? `${API_BASE_URL}/api/travel-requests` 
-          : `${API_BASE_URL}/api/travel-requests/employee/${user.id}`;
-        
-        const expensesEndpoint = isManager
-          ? `${API_BASE_URL}/api/expenses`
-          : `${API_BASE_URL}/api/expenses/employee/${user.id}`;
-
         const [tripsResponse, expensesResponse] = await Promise.all([
-          api.get(tripsEndpoint),
-          api.get(expensesEndpoint),
+          menuSettings.travelEnabled
+            ? api.get(
+                isManager
+                  ? `${API_BASE_URL}/api/travel-requests`
+                  : `${API_BASE_URL}/api/travel-requests/employee/${user.id}`
+              )
+            : Promise.resolve({ data: [] }),
+          menuSettings.expenseEnabled
+            ? api.get(
+                isManager
+                  ? `${API_BASE_URL}/api/expenses`
+                  : `${API_BASE_URL}/api/expenses/employee/${user.id}`
+              )
+            : Promise.resolve({ data: [] }),
         ]);
 
         // Transform the response to ensure document data is properly structured
@@ -132,7 +148,15 @@ export default function Travel() {
     };
 
     fetchTripsAndExpenses();
-  }, [user?.id, hasPermission, location, searchParams]);
+  }, [
+    user?.id,
+    hasPermission,
+    location,
+    searchParams,
+    menuLoading,
+    menuSettings.travelEnabled,
+    menuSettings.expenseEnabled,
+  ]);
 
   const totalExpenses = expenses.reduce(
     (sum, expense) => sum + (expense.amount || 0),
@@ -254,44 +278,57 @@ export default function Travel() {
               </p>
             </div>
             <div className="mt-2 space-x-3 sm:mt-0">
-              <button
-                onClick={handleSubmitExpense}
-                className="inline-flex items-center rounded-md border border-white/70 bg-transparent px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
-              >
-                <Receipt className="mr-2 h-4 w-4" />
-                Submit Expense
-              </button>
-              <button
-                onClick={handleNewTripRequest}
-                className="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                New Trip Request
-              </button>
+              {menuSettings.expenseEnabled && (
+                <button
+                  onClick={handleSubmitExpense}
+                  className="inline-flex items-center rounded-md border border-white/70 bg-transparent px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+                >
+                  <Receipt className="mr-2 h-4 w-4" />
+                  Submit Expense
+                </button>
+              )}
+              {menuSettings.travelEnabled && (
+                <button
+                  onClick={handleNewTripRequest}
+                  className="inline-flex items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-50"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Trip Request
+                </button>
+              )}
             </div>
           </div>
         </div>
         <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
-          <div className="px-4 py-3">
-            <p className="text-xs uppercase text-slate-500">Trip Requests</p>
-            <p className="mt-1 text-xl font-bold text-slate-900">{trips.length}</p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-xs uppercase text-slate-500">Pending Trips</p>
-            <p className="mt-1 text-xl font-bold text-amber-700">{pendingTrips}</p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-xs uppercase text-slate-500">Expenses</p>
-            <p className="mt-1 text-xl font-bold text-indigo-700">{expenses.length}</p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-xs uppercase text-slate-500">Total Amount</p>
-            <p className="mt-1 text-xl font-bold text-sky-700">₹{totalExpenses.toFixed(2)}</p>
-          </div>
+          {menuSettings.travelEnabled && (
+            <>
+              <div className="px-4 py-3">
+                <p className="text-xs uppercase text-slate-500">Trip Requests</p>
+                <p className="mt-1 text-xl font-bold text-slate-900">{trips.length}</p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-xs uppercase text-slate-500">Pending Trips</p>
+                <p className="mt-1 text-xl font-bold text-amber-700">{pendingTrips}</p>
+              </div>
+            </>
+          )}
+          {menuSettings.expenseEnabled && (
+            <>
+              <div className="px-4 py-3">
+                <p className="text-xs uppercase text-slate-500">Expenses</p>
+                <p className="mt-1 text-xl font-bold text-indigo-700">{expenses.length}</p>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-xs uppercase text-slate-500">Total Amount</p>
+                <p className="mt-1 text-xl font-bold text-sky-700">₹{totalExpenses.toFixed(2)}</p>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
       {/* Upcoming & Recent Trips */}
+      {menuSettings.travelEnabled && (
       <div className="rounded-md border border-slate-300 bg-white shadow-sm">
         <div className="border-b border-slate-200 p-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Trip Requests</h2>
@@ -340,8 +377,10 @@ export default function Travel() {
           )}
         </div>
       </div>
+      )}
 
       {/* Recent Expenses */}
+      {menuSettings.expenseEnabled && (
       <div className="rounded-md border border-slate-300 bg-white shadow-sm">
         <div className="border-b border-slate-200 p-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -451,6 +490,7 @@ export default function Travel() {
           </table>
         </div>
       </div>
+      )}
 
       {/* Trip Detail Modal */}
       {selectedTrip && (

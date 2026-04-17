@@ -1,132 +1,180 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import CommonDialog from "../components/CommonDialog";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
+import api from "../api/axios";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Project {
   id: number;
-  name: string;
+  projectName: string;
   description: string;
-  status?: string;
+  startDate: string;
+  deadline: string;
+  status: "ACTIVE" | "COMPLETED";
+  employeeIds: number[];
 }
 
+interface EmployeeOption {
+  id: number;
+  code?: string;
+  firstName: string;
+  lastName: string;
+  role?: string;
+}
+
+type ProjectForm = {
+  projectName: string;
+  description: string;
+  startDate: string;
+  deadline: string;
+  status: "ACTIVE" | "COMPLETED";
+  employeeIds: number[];
+};
+
+const emptyForm: ProjectForm = {
+  projectName: "",
+  description: "",
+  startDate: "",
+  deadline: "",
+  status: "ACTIVE",
+  employeeIds: [],
+};
+
+const MAX_PROJECT_DESCRIPTION_LENGTH = 10000;
+
 const ProjectManagement: React.FC = () => {
+  const { user } = useAuth();
+  const currentUserRole = String(user?.role || "").toLowerCase();
+  const isReadOnlyAdmin = currentUserRole === "admin";
+  const canEditProjects = !isReadOnlyAdmin;
   const [projects, setProjects] = useState<Project[]>([]);
-  const [newProject, setNewProject] = useState({ name: "", description: "" });
-  const [editProject, setEditProject] = useState<Project | null>(null);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [form, setForm] = useState<ProjectForm>(emptyForm);
+  const [editingProjectId, setEditingProjectId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  const loadData = async () => {
+    try {
+      const [projectsResponse, employeesResponse] = await Promise.all([
+        api.get("/api/projects"),
+        api.get("/auth/employees"),
+      ]);
+      setProjects(Array.isArray(projectsResponse.data) ? projectsResponse.data : []);
+      setEmployees(Array.isArray(employeesResponse.data) ? employeesResponse.data : []);
+    } catch (error) {
+      console.error("Error fetching project data:", error);
+      setMessage("Failed to load projects or employees.");
+    }
+  };
 
   useEffect(() => {
-    fetchProjects();
+    void loadData();
   }, []);
 
-  // ✅ Fetch All Projects
-  const fetchProjects = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/projects`);
+  const activeCount = useMemo(
+    () => projects.filter((project) => project.status === "ACTIVE").length,
+    [projects]
+  );
 
-      const data = await response.json();
+  const assignedCount = useMemo(
+    () => projects.filter((project) => project.employeeIds.length > 0).length,
+    [projects]
+  );
 
-      // ✅ Ensure API data is mapped correctly
-      const formattedProjects = data.map((proj: any) => ({
-        id: proj.id,
-        name: proj.projectName, // Ensure API returns projectName
-        description: proj.description,
-      }));
-
-      setProjects(formattedProjects);
-    } catch (error) {
-      console.error("Error fetching projects:", error);
-    }
+  const resetForm = () => {
+    setForm(emptyForm);
+    setEditingProjectId(null);
   };
 
-  // ✅ Add a New Project
-  const handleAddProject = async () => {
-    if (!newProject.name.trim() || !newProject.description.trim()) {
-      setMessage("⚠️ Please fill all fields.");
+  const handleEmployeeToggle = (employeeId: number) => {
+    setForm((prev) => ({
+      ...prev,
+      employeeIds: prev.employeeIds.includes(employeeId)
+        ? prev.employeeIds.filter((id) => id !== employeeId)
+        : [...prev.employeeIds, employeeId],
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.projectName.trim() || !form.startDate || !form.deadline) {
+      setMessage("Project name, start date, and deadline are required.");
+      return;
+    }
+    if (form.description.trim().length > MAX_PROJECT_DESCRIPTION_LENGTH) {
+      setMessage(`Project description cannot exceed ${MAX_PROJECT_DESCRIPTION_LENGTH} characters.`);
       return;
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/projects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectName: newProject.name,
-          description: newProject.description,
-        }),
-      });
+      setSaving(true);
+      setMessage("");
+      const payload = {
+        projectName: form.projectName.trim(),
+        description: form.description.trim(),
+        startDate: form.startDate,
+        deadline: form.deadline,
+        status: form.status,
+        employeeIds: form.employeeIds,
+      };
 
-      if (response.ok) {
-        setMessage("✅ Project added successfully!");
-        setNewProject({ name: "", description: "" });
-        fetchProjects();
+      if (editingProjectId) {
+        await api.put(`/api/projects/${editingProjectId}`, payload);
+        setMessage("Project updated successfully.");
       } else {
-        setMessage("❌ Failed to add project.");
+        await api.post("/api/projects", payload);
+        setMessage("Project created successfully.");
       }
-    } catch (error) {
-      console.error("Error adding project:", error);
-      setMessage("❌ Error adding project.");
-    }
-  };
 
-  // ✅ Update an Existing Project
-  const handleUpdateProject = async () => {
-    if (
-      !editProject ||
-      !editProject.name.trim() ||
-      !editProject.description.trim()
-    ) {
-      setMessage("⚠️ Please fill all fields.");
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/projects/${editProject.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            projectName: editProject.name,
-            description: editProject.description,
-          }),
-        }
+      resetForm();
+      await loadData();
+    } catch (error: any) {
+      console.error("Error saving project:", error);
+      setMessage(
+        error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Failed to save project."
       );
-
-      if (response.ok) {
-        setMessage("✅ Project updated successfully!");
-        setEditProject(null); // ✅ Reset after updating
-        fetchProjects(); // ✅ Refresh projects
-      } else {
-        setMessage("❌ Failed to update project.");
-      }
-    } catch (error) {
-      console.error("Error updating project:", error);
-      setMessage("❌ Error updating project.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  // ✅ Delete a Project
+  const startEditing = (project: Project) => {
+    setEditingProjectId(project.id);
+    setForm({
+      projectName: project.projectName,
+      description: project.description || "",
+      startDate: project.startDate || "",
+      deadline: project.deadline || "",
+      status: project.status || "ACTIVE",
+      employeeIds: project.employeeIds || [],
+    });
+  };
+
+  const getEmployeeNames = (employeeIds: number[]) => {
+    return employees
+      .filter((employee) => employeeIds.includes(employee.id))
+      .map((employee) =>
+        `${employee.code ? `${employee.code} - ` : ""}${employee.firstName} ${employee.lastName}`
+      );
+  };
+
+  const openProjectDetails = (project: Project) => {
+    setSelectedProject(project);
+  };
+
   const handleDeleteProject = async (id: number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/projects/${id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        setMessage("✅ Project deleted successfully!");
-        fetchProjects();
-      } else {
-        setMessage("❌ Failed to delete project.");
-      }
+      await api.delete(`/api/projects/${id}`);
+      setMessage("Project deleted successfully.");
+      await loadData();
     } catch (error) {
       console.error("Error deleting project:", error);
-      setMessage("❌ Error deleting project.");
+      setMessage("Failed to delete project.");
     }
   };
-  const successMessage = message.startsWith("✅");
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
@@ -134,7 +182,7 @@ const ProjectManagement: React.FC = () => {
         <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
           <h1 className="text-3xl font-bold tracking-tight">Project Management</h1>
           <p className="mt-1 text-sm text-sky-50">
-            Create and manage project records.
+            HR can create organization projects, assign employees, and mark work as active or completed.
           </p>
         </div>
         <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
@@ -143,73 +191,154 @@ const ProjectManagement: React.FC = () => {
             <p className="mt-1 text-xl font-bold text-slate-900">{projects.length}</p>
           </div>
           <div className="px-4 py-3">
-            <p className="text-xs uppercase text-slate-500">Editing</p>
-            <p className="mt-1 text-xl font-bold text-sky-700">{editProject ? "Yes" : "No"}</p>
+            <p className="text-xs uppercase text-slate-500">Active</p>
+            <p className="mt-1 text-xl font-bold text-emerald-700">{activeCount}</p>
           </div>
           <div className="px-4 py-3">
-            <p className="text-xs uppercase text-slate-500">New Project Name</p>
-            <p className="mt-1 truncate text-sm font-semibold text-slate-700">
-              {newProject.name || "Not entered"}
-            </p>
+            <p className="text-xs uppercase text-slate-500">Assigned</p>
+            <p className="mt-1 text-xl font-bold text-slate-900">{assignedCount}</p>
           </div>
           <div className="px-4 py-3">
-            <p className="text-xs uppercase text-slate-500">New Description</p>
-            <p className="mt-1 truncate text-sm font-semibold text-slate-700">
-              {newProject.description || "Not entered"}
+            <p className="text-xs uppercase text-slate-500">Mode</p>
+            <p className="mt-1 text-xl font-bold text-sky-700">
+              {editingProjectId ? "Edit" : "Create"}
             </p>
           </div>
         </div>
       </section>
 
-      {/* ✅ New Project Form */}
-      <div className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
+      {canEditProjects && (
+      <section className="rounded-md border border-slate-300 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Add New Project
+          {editingProjectId ? "Update Project" : "Create Project"}
         </h2>
 
         {message && (
-          <div
-            className={`mb-3 rounded-md border px-4 py-2 text-sm ${
-              successMessage
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-rose-200 bg-rose-50 text-rose-700"
-            }`}
-          >
+          <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
             {message}
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <input
-            type="text"
-            placeholder="Project Name"
-            value={newProject.name}
-            onChange={(e) =>
-              setNewProject({ ...newProject, name: e.target.value })
-            }
-            className="w-full rounded-md border border-slate-300 p-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
-          />
-          <input
-            type="text"
-            placeholder="Project Description"
-            value={newProject.description}
-            onChange={(e) =>
-              setNewProject({ ...newProject, description: e.target.value })
-            }
-            className="w-full rounded-md border border-slate-300 p-3 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
-          />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+              Project Name
+            </label>
+            <input
+              type="text"
+              value={form.projectName}
+              onChange={(e) => setForm((prev) => ({ ...prev, projectName: e.target.value }))}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+              Status
+            </label>
+            <select
+              value={form.status}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  status: e.target.value as "ACTIVE" | "COMPLETED",
+                }))
+              }
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+              Start Date
+            </label>
+            <input
+              type="date"
+              value={form.startDate}
+              onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+              Deadline
+            </label>
+            <input
+              type="date"
+              value={form.deadline}
+              onChange={(e) => setForm((prev) => ({ ...prev, deadline: e.target.value }))}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+            />
+          </div>
         </div>
 
-        <button
-          onClick={handleAddProject}
-          className="mt-4 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-        >
-          Add Project
-        </button>
-      </div>
+        <div className="mt-4">
+          <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+            Description
+          </label>
+          <textarea
+            value={form.description}
+            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+            rows={3}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
+          />
+          <div className="mt-1 flex justify-between text-[11px] text-slate-500">
+            <span>Describe scope, goals, and key delivery expectations.</span>
+            <span>
+              {form.description.length}/{MAX_PROJECT_DESCRIPTION_LENGTH}
+            </span>
+          </div>
+        </div>
 
-      {/* ✅ Project Table */}
-      <div className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
+        <div className="mt-4">
+          <label className="mb-2 block text-xs font-semibold uppercase text-slate-500">
+            Assign Employees
+          </label>
+          <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              {employees.map((employee) => (
+                <label
+                  key={employee.id}
+                  className="flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.employeeIds.includes(employee.id)}
+                    onChange={() => handleEmployeeToggle(employee.id)}
+                  />
+                  <span>
+                    {employee.code ? `${employee.code} - ` : ""}
+                    {employee.firstName} {employee.lastName}
+                    {employee.role ? ` (${employee.role})` : ""}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60"
+          >
+            {saving ? "Saving..." : editingProjectId ? "Update Project" : "Create Project"}
+          </button>
+          {editingProjectId && (
+            <button
+              onClick={resetForm}
+              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </section>
+      )}
+
+      <section className="overflow-hidden rounded-md border border-slate-300 bg-white shadow-sm">
         <h2 className="border-b border-slate-200 p-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
           Project List
         </h2>
@@ -217,15 +346,10 @@ const ProjectManagement: React.FC = () => {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">
-                  Project Name
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">
-                  Description
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">
-                  Actions
-                </th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Project</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Status</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Assigned Employees</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -233,77 +357,40 @@ const ProjectManagement: React.FC = () => {
                 projects.map((project) => (
                   <tr key={project.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm text-slate-900">
-                      {editProject?.id === project.id ? (
-                        <input
-                          type="text"
-                          value={editProject.name}
-                          onChange={(e) =>
-                            setEditProject({
-                              ...editProject,
-                              name: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-md border border-slate-300 p-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
-                        />
-                      ) : (
-                        project.name
-                      )}
+                      <div className="font-semibold">{project.projectName}</div>
+                      <div className="whitespace-pre-wrap break-words text-xs text-slate-500">
+                        {project.description || "No description"}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-900">
-                      {editProject?.id === project.id ? (
-                        <input
-                          type="text"
-                          value={editProject.description}
-                          onChange={(e) =>
-                            setEditProject({
-                              ...editProject,
-                              description: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-md border border-slate-300 p-2 text-sm text-slate-700 focus:border-sky-500 focus:outline-none"
-                        />
-                      ) : (
-                        project.description
-                      )}
+                    <td className="px-4 py-3 text-sm">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                          project.status === "COMPLETED"
+                            ? "bg-slate-100 text-slate-700"
+                            : "bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        {project.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-700">
+                      {project.employeeIds.length}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-900">
                       <div className="flex gap-2">
-                      {editProject?.id === project.id ? (
-                        <>
-                          <button
-                            onClick={handleUpdateProject}
-                            className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-800"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditProject(null)}
-                            className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
                         <button
-                          onClick={() => setEditProject(project)}
-                          className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
+                          onClick={() => openProjectDetails(project)}
+                          className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-800"
                         >
-                          Edit
+                          View Details
                         </button>
-                      )}
-                      <button
-                        onClick={() => setDeleteTargetId(project.id)}
-                        className="rounded-md bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700"
-                      >
-                        Delete
-                      </button>
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} className="py-8 text-center text-sm text-slate-500">
+                  <td colSpan={4} className="py-8 text-center text-sm text-slate-500">
                     No projects found.
                   </td>
                 </tr>
@@ -311,7 +398,7 @@ const ProjectManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
       <CommonDialog
         isOpen={deleteTargetId !== null}
@@ -321,12 +408,91 @@ const ProjectManagement: React.FC = () => {
         confirmText="Delete"
         onConfirm={() => {
           if (deleteTargetId !== null) {
-            handleDeleteProject(deleteTargetId);
+            void handleDeleteProject(deleteTargetId);
             setDeleteTargetId(null);
           }
         }}
         onClose={() => setDeleteTargetId(null)}
       />
+
+      {selectedProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 backdrop-blur-sm">
+          <div className="relative w-full max-w-3xl rounded-md border border-slate-200 bg-white p-6 shadow-xl">
+            <button
+              className="absolute right-3 top-3 rounded-md px-2 py-1 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              onClick={() => setSelectedProject(null)}
+            >
+              Close
+            </button>
+            <h2 className="text-2xl font-bold text-slate-900">{selectedProject.projectName}</h2>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-600">
+              {selectedProject.description || "No description provided."}
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs uppercase text-slate-500">Start Date</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {selectedProject.startDate || "-"}
+                </p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs uppercase text-slate-500">Deadline</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {selectedProject.deadline || "-"}
+                </p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs uppercase text-slate-500">Status</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {selectedProject.status}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase text-slate-500">Assigned Employees</p>
+              <div className="mt-2 space-y-2">
+                {getEmployeeNames(selectedProject.employeeIds).length > 0 ? (
+                  getEmployeeNames(selectedProject.employeeIds).map((name) => (
+                    <div
+                      key={name}
+                      className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                    >
+                      {name}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">No employees assigned.</p>
+                )}
+              </div>
+            </div>
+
+            {canEditProjects && (
+              <div className="mt-5 flex gap-2">
+                <button
+                  onClick={() => {
+                    startEditing(selectedProject);
+                    setSelectedProject(null);
+                  }}
+                  className="rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => {
+                    setDeleteTargetId(selectedProject.id);
+                    setSelectedProject(null);
+                  }}
+                  className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

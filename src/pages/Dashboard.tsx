@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Users,
   Clock,
@@ -15,6 +15,7 @@ import {
   Megaphone,
   Send,
   Trash2,
+  FolderKanban,
 } from "lucide-react";
 import {
   BarChart,
@@ -31,6 +32,7 @@ import {
 import api from "../api/axios";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
+import useOrganizationMenuSettings from "../hooks/useOrganizationMenuSettings";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { getPublicHolidays, type Holiday } from "../api/holidays";
@@ -141,6 +143,43 @@ function parseQueueDate(row: any): Date | null {
   return null;
 }
 
+function parseNotificationTimestamp(row: any): number | null {
+  const candidates = [
+    row?.updatedAt,
+    row?.submittedAt,
+    row?.createdAt,
+    row?.requestDate,
+    row?.requestedAt,
+    row?.entryDate,
+    row?.date,
+  ];
+  for (const value of candidates) {
+    if (!value) continue;
+    const parsed = new Date(value).getTime();
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return null;
+}
+
+function readNotificationState(storageKey: string): Record<string, number> {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeNotificationState(storageKey: string, state: Record<string, number>) {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch {
+    // Ignore storage failures and keep notifications functional.
+  }
+}
+
 function buildPendingInsights(rows: any[], statuses?: string[]) {
   const normalizedStatuses = statuses?.map((status) => status.toUpperCase());
   const pendingRows = normalizedStatuses?.length
@@ -186,6 +225,7 @@ interface DashboardStats {
   averageAttendance: number;
   leaveRequests: number;
   openPositions: number;
+  activeProjects: number;
   employeeGrowth: number;
   attendanceTrend: number;
   leaveRequestTrend: number;
@@ -207,7 +247,9 @@ type OrganizationOverview = {
   active?: boolean;
   userCount?: number;
   activeUserCount?: number;
+  activeProjectCount?: number;
   maxActiveUsers?: number;
+  timesheetEnabled?: boolean;
 };
 
 type FinancialSummary = {
@@ -215,19 +257,6 @@ type FinancialSummary = {
   totalSalariesPaid: number;
   accountBalance: number;
   travelExpenses: number;
-};
-
-type OrganizationMenuSettings = {
-  employeeManagementEnabled: boolean;
-  selfServiceEnabled: boolean;
-  attendanceEnabled: boolean;
-  timesheetEnabled: boolean;
-  recruitmentEnabled: boolean;
-  leaveManagementEnabled: boolean;
-  holidayManagementEnabled: boolean;
-  payrollEnabled: boolean;
-  travelEnabled: boolean;
-  expenseEnabled: boolean;
 };
 
 type AdminActionMetric = {
@@ -292,25 +321,27 @@ type EmployeeTaskSummary = {
   submittedGoals: number;
 };
 
-const defaultMenuSettings: OrganizationMenuSettings = {
-  employeeManagementEnabled: true,
-  selfServiceEnabled: true,
-  attendanceEnabled: true,
-  timesheetEnabled: true,
-  recruitmentEnabled: true,
-  leaveManagementEnabled: true,
-  holidayManagementEnabled: true,
-  payrollEnabled: true,
-  travelEnabled: true,
-  expenseEnabled: true,
+type DashboardNotificationItem = {
+  key: string;
+  label: string;
+  count: number;
+  href: string;
+  latestAt: number;
+  itemType?: "travel" | "expense";
+  itemId?: number;
 };
 
 export default function Dashboard() {
   const { user, hasPermission } = useAuth();
+  const { menuSettings, loading: menuSettingsLoading } = useOrganizationMenuSettings();
+  const navigate = useNavigate();
   const isMainAdmin = (user?.role || "").toLowerCase() === "admin";
   const currentUserRole = (user?.role || "").toLowerCase();
   const isEmployee = currentUserRole === "employee";
   const isManager = currentUserRole === "manager";
+  const isHrOrOrgAdmin = currentUserRole === "hr" || currentUserRole === "org_admin";
+  const canViewAllTimesheets = ["hr", "org_admin"].includes(currentUserRole);
+  const canViewTeamTimesheets = currentUserRole === "manager";
   const canManageEmployees = hasPermission("manage", "employees");
   const shouldShowPeopleInsights = !isMainAdmin && !isEmployee;
   const canPublishAnnouncements = currentUserRole === "org_admin" || currentUserRole === "hr";
@@ -328,6 +359,7 @@ export default function Dashboard() {
     averageAttendance: 0,
     leaveRequests: 0,
     openPositions: 0,
+    activeProjects: 0,
     employeeGrowth: 0,
     attendanceTrend: 0,
     leaveRequestTrend: 0,
@@ -391,9 +423,20 @@ export default function Dashboard() {
     pendingTravel: 0,
     submittedGoals: 0,
   });
-  const [menuSettings, setMenuSettings] =
-    useState<OrganizationMenuSettings>(defaultMenuSettings);
   const [profileImageUrl, setProfileImageUrl] = useState<string>("");
+  const [notifications, setNotifications] = useState<DashboardNotificationItem[]>([]);
+  const [notificationReads, setNotificationReads] = useState<Record<string, number>>({});
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  const notificationStorageKey = useMemo(
+    () => `dashboardNotificationReads:${user?.id || "anonymous"}`,
+    [user?.id]
+  );
+
+  useEffect(() => {
+    setNotificationReads(readNotificationState(notificationStorageKey));
+  }, [notificationStorageKey]);
 
   const toAbsoluteMediaUrl = (rawUrl?: string) => {
     const trimmed = String(rawUrl || "").trim();
@@ -402,38 +445,6 @@ export default function Dashboard() {
     const baseUrl = (import.meta.env.VITE_API_BASE_URL_LOCAL || "").replace(/\/+$/, "");
     return `${baseUrl}${trimmed.startsWith("/") ? "" : "/"}${trimmed}`;
   };
-
-  useEffect(() => {
-    if (isMainAdmin || !user) {
-      setMenuSettings(defaultMenuSettings);
-      return;
-    }
-    let cancelled = false;
-    const loadMenuSettings = async () => {
-      try {
-        const response = await api.get("/api/organizations/current/menu-settings");
-        if (cancelled) return;
-        setMenuSettings({
-          employeeManagementEnabled: response.data?.employeeManagementEnabled !== false,
-          selfServiceEnabled: response.data?.selfServiceEnabled !== false,
-          attendanceEnabled: response.data?.attendanceEnabled !== false,
-          timesheetEnabled: response.data?.timesheetEnabled !== false,
-          recruitmentEnabled: response.data?.recruitmentEnabled !== false,
-          leaveManagementEnabled: response.data?.leaveManagementEnabled !== false,
-          holidayManagementEnabled: response.data?.holidayManagementEnabled !== false,
-          payrollEnabled: response.data?.payrollEnabled !== false,
-          travelEnabled: response.data?.travelEnabled !== false,
-          expenseEnabled: response.data?.expenseEnabled !== false,
-        });
-      } catch {
-        if (!cancelled) setMenuSettings(defaultMenuSettings);
-      }
-    };
-    void loadMenuSettings();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, user?.role, isMainAdmin]);
 
   useEffect(() => {
     let cancelled = false;
@@ -459,7 +470,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!user?.id || isMainAdmin || !menuSettings.attendanceEnabled) {
+    if (!user?.id || isMainAdmin || menuSettingsLoading || !menuSettings.attendanceEnabled) {
       setTodayAttendance(null);
       setTodayAttendanceLoading(false);
       return () => {
@@ -483,7 +494,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, isMainAdmin, menuSettings.attendanceEnabled]);
+  }, [user?.id, isMainAdmin, menuSettingsLoading, menuSettings.attendanceEnabled]);
 
   useEffect(() => {
     const hasOpenShift = Boolean(todayAttendance?.checkInTime) && !todayAttendance?.checkOutTime;
@@ -534,6 +545,9 @@ export default function Dashboard() {
       }, 30000);
       return () => clearInterval(interval);
     }
+    if (menuSettingsLoading) {
+      return;
+    }
 
     if (canManageEmployees) {
       fetchDashboardData();
@@ -561,6 +575,7 @@ export default function Dashboard() {
     void fetchAnnouncements();
     void fetchEmployeeEssentials();
     void fetchEmployeeTaskSummary();
+    void fetchDashboardNotifications();
     // Set up polling for real-time updates every 30 seconds
     const interval = setInterval(() => {
       if (canManageEmployees) {
@@ -587,6 +602,7 @@ export default function Dashboard() {
       void fetchAnnouncements();
       void fetchEmployeeEssentials();
       void fetchEmployeeTaskSummary();
+      void fetchDashboardNotifications();
     }, 30000);
     return () => clearInterval(interval);
   }, [
@@ -597,12 +613,29 @@ export default function Dashboard() {
     menuSettings.timesheetEnabled,
     menuSettings.recruitmentEnabled,
     menuSettings.leaveManagementEnabled,
+    menuSettings.travelEnabled,
+    menuSettings.expenseEnabled,
+    menuSettingsLoading,
     canPublishAnnouncements,
     user?.id,
     currentUserRole,
     canManageEmployees,
     shouldShowPeopleInsights,
   ]);
+
+  useEffect(() => {
+    if (!isNotificationOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!notificationDropdownRef.current) return;
+      if (!notificationDropdownRef.current.contains(event.target as Node)) {
+        setIsNotificationOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [isNotificationOpen]);
 
   const fetchEmployeeDashboardData = async () => {
     if (!user?.id) return;
@@ -611,7 +644,7 @@ export default function Dashboard() {
       setLoading(true);
 
       if (menuSettings.timesheetEnabled) {
-        const attendanceResponse = await api.get(`/api/timesheet/employee/${user.id}`);
+        const attendanceResponse = await getScopedTimesheets();
         void attendanceResponse;
       }
       setError(null);
@@ -645,10 +678,11 @@ export default function Dashboard() {
       setLoading(true);
 
       // Fetch all required data in parallel, including recruitment details
-      const [employeesResponse, leaveRequestsResponse, recruitmentResponse] = await Promise.all([
+      const [employeesResponse, leaveRequestsResponse, recruitmentResponse, projectsResponse] = await Promise.all([
         api.get(`/auth/employees`),
         api.get(`/api/leave-requests`),
         api.get(`/api/recruitment-details`),
+        menuSettings.timesheetEnabled ? api.get(`/api/projects`) : Promise.resolve({ data: [] }),
       ]);
 
       // Calculate total employees and growth
@@ -686,6 +720,10 @@ export default function Dashboard() {
       // Fetch open positions from recruitment data
       const recruitmentData = recruitmentResponse.data || [];
       const openPositions = recruitmentData.filter((job: any) => job.status === "OPEN").length;
+      const projectRows = Array.isArray(projectsResponse.data) ? projectsResponse.data : [];
+      const activeProjects = projectRows.filter(
+        (project: any) => String(project?.status || "").toUpperCase() === "ACTIVE"
+      ).length;
       const positionTrend = 3.1; // You can update this if you want to calculate a trend
 
       // For now, set some default values for attendance
@@ -698,6 +736,7 @@ export default function Dashboard() {
         averageAttendance,
         leaveRequests: pendingLeaveRequests.length,
         openPositions,
+        activeProjects,
         employeeGrowth: Number(employeeGrowth),
         attendanceTrend,
         leaveRequestTrend: Number(leaveRequestTrend),
@@ -713,6 +752,40 @@ export default function Dashboard() {
     }
   };
 
+  const getScopedTimesheets = async () => {
+    if (!user?.id) {
+      return { data: [] };
+    }
+
+    if (canViewAllTimesheets) {
+      return api.get(`/api/timesheet`);
+    }
+
+    if (canViewTeamTimesheets) {
+      const [employeesResponse, timesheetsResponse] = await Promise.all([
+        api.get(`/auth/employees`),
+        api.get(`/api/timesheet`),
+      ]);
+
+      const employees = Array.isArray(employeesResponse.data) ? employeesResponse.data : [];
+      const timesheets = Array.isArray(timesheetsResponse.data) ? timesheetsResponse.data : [];
+      const currentUserId = Number(user.id);
+      const managedEmployeeIds = new Set(
+        employees
+          .filter((employee: any) => employee.reportingManager?.id === currentUserId)
+          .map((employee: any) => employee.id)
+      );
+
+      return {
+        data: timesheets.filter((timesheet: any) =>
+          managedEmployeeIds.has(Number(timesheet.employeeId))
+        ),
+      };
+    }
+
+    return api.get(`/api/timesheet/employee/${user.id}`);
+  };
+
   const fetchRecentActivities = async () => {
     if (!shouldShowPeopleInsights) {
       setRecentActivities([]);
@@ -722,18 +795,17 @@ export default function Dashboard() {
       const [
         employeesResponse,
         leaveRequestsResponse,
-        timesheetsResponse,
         jobPostingsResponse,
       ] = await Promise.all([
         api.get(`/auth/employees`),
         api.get(`/api/leave-requests`),
-        menuSettings.timesheetEnabled
-          ? api.get(`/api/timesheet`)
-          : Promise.resolve({ data: null }),
         menuSettings.recruitmentEnabled
           ? api.get(`/api/recruitment-details`)
           : Promise.resolve({ data: [] }),
       ]);
+      const timesheetsResponse = menuSettings.timesheetEnabled
+        ? await getScopedTimesheets()
+        : { data: null };
 
       const activities: Activity[] = [];
 
@@ -852,6 +924,14 @@ export default function Dashboard() {
 
   const employeeDashboardQuickLinks = useMemo((): DashboardQuickLink[] => {
     const items: DashboardQuickLink[] = [];
+    if (menuSettings.timesheetEnabled) {
+      items.push({
+        name: "My Projects",
+        icon: FolderKanban,
+        color: "bg-cyan-600",
+        href: "/timesheet/projects",
+      });
+    }
     if (menuSettings.timesheetEnabled && hasPermission("submit", "timesheet")) {
       items.push({
         name: "Submit Timesheet",
@@ -1042,7 +1122,7 @@ export default function Dashboard() {
     const hasTeamAccess = hasPermission("manage", "employees");
     const canApproveLeave = hasPermission("approve", "leave");
     const canApproveTimesheet = hasPermission("approve", "timesheet");
-    const canApproveTravel = hasPermission("approve", "travel");
+    const canApproveTravel = hasPermission("approve", "travel") || hasPermission("approve", "expenses");
     const canApproveExpenses = hasPermission("approve", "expenses");
 
     const requests: Promise<unknown>[] = [];
@@ -1110,7 +1190,7 @@ export default function Dashboard() {
         });
       };
 
-      if (responseByKey.leave?.data) {
+      if (menuSettings.leaveManagementEnabled && responseByKey.leave?.data) {
         const rows = Array.isArray(responseByKey.leave.data) ? responseByKey.leave.data : [];
         const insights = buildPendingInsights(rows, ["PENDING", "REVOCATION_PENDING"]);
         pushMetric(
@@ -1123,9 +1203,10 @@ export default function Dashboard() {
         );
       }
 
-      if (responseByKey.timesheet?.data) {
+      if (menuSettings.timesheetEnabled && responseByKey.timesheet?.data) {
         const rows = Array.isArray(responseByKey.timesheet.data) ? responseByKey.timesheet.data : [];
-        const insights = buildPendingInsights(rows, ["PENDING", "SUBMITTED"]);
+        const actionableRows = rows.filter((row: any) => row?.canCurrentUserApprove !== false);
+        const insights = buildPendingInsights(actionableRows, ["PENDING", "SUBMITTED"]);
         pushMetric(
           "timesheet",
           "Timesheet approvals",
@@ -1136,7 +1217,7 @@ export default function Dashboard() {
         );
       }
 
-      if (responseByKey.travel?.data) {
+      if (menuSettings.travelEnabled && responseByKey.travel?.data) {
         const rows = Array.isArray(responseByKey.travel.data) ? responseByKey.travel.data : [];
         const insights = buildPendingInsights(rows);
         pushMetric(
@@ -1149,7 +1230,7 @@ export default function Dashboard() {
         );
       }
 
-      if (responseByKey.expense?.data) {
+      if (menuSettings.expenseEnabled && responseByKey.expense?.data) {
         const rows = Array.isArray(responseByKey.expense.data) ? responseByKey.expense.data : [];
         const insights = buildPendingInsights(rows);
         pushMetric(
@@ -1323,26 +1404,32 @@ export default function Dashboard() {
 
     try {
       const [leaveTypesResponse, balancesResponse, holidaysResponse] = await Promise.all([
-        api.get("/api/leave-types"),
-        api.get(`/api/leave-balances/employee/${user.id}`),
+        menuSettings.leaveManagementEnabled ? api.get("/api/leave-types") : Promise.resolve({ data: [] }),
+        menuSettings.leaveManagementEnabled
+          ? api.get(`/api/leave-balances/employee/${user.id}`)
+          : Promise.resolve({ data: [] }),
         getPublicHolidays(new Date().getFullYear()),
       ]);
 
-      const leaveTypes = Array.isArray(leaveTypesResponse.data) ? leaveTypesResponse.data : [];
-      const balances = Array.isArray(balancesResponse.data) ? balancesResponse.data : [];
+      if (menuSettings.leaveManagementEnabled) {
+        const leaveTypes = Array.isArray(leaveTypesResponse.data) ? leaveTypesResponse.data : [];
+        const balances = Array.isArray(balancesResponse.data) ? balancesResponse.data : [];
 
-      const leaveByType = leaveTypes.map((type: any) => {
-        const match = balances.find((row: any) => row.leaveTypeId === type.id);
-        const remaining = Number(match?.balance ?? type.defaultBalance ?? 0);
-        return {
-          typeName: String(type?.name || "Leave"),
-          remaining,
-        };
-      });
-      setLeaveBalanceSummary({
-        totalRemaining: leaveByType.reduce((sum, item) => sum + Number(item.remaining || 0), 0),
-        byType: leaveByType,
-      });
+        const leaveByType = leaveTypes.map((type: any) => {
+          const match = balances.find((row: any) => row.leaveTypeId === type.id);
+          const remaining = Number(match?.balance ?? type.defaultBalance ?? 0);
+          return {
+            typeName: String(type?.name || "Leave"),
+            remaining,
+          };
+        });
+        setLeaveBalanceSummary({
+          totalRemaining: leaveByType.reduce((sum, item) => sum + Number(item.remaining || 0), 0),
+          byType: leaveByType,
+        });
+      } else {
+        setLeaveBalanceSummary({ totalRemaining: 0, byType: [] });
+      }
 
       const now = dayjs().startOf("day");
       const holidayRows = Array.isArray(holidaysResponse) ? holidaysResponse : [];
@@ -1371,30 +1458,42 @@ export default function Dashboard() {
 
     try {
       const [leaveResponse, timesheetResponse, travelResponse] = await Promise.all([
-        api.get(`/api/leave-requests/employee/${user.id}`),
-        api.get(`/api/timesheet/employee/${user.id}`),
-        api.get(`/api/travel-requests/employee/${user.id}`),
+        menuSettings.leaveManagementEnabled
+          ? api.get(`/api/leave-requests/employee/${user.id}`)
+          : Promise.resolve({ data: [] }),
+        menuSettings.timesheetEnabled
+          ? getScopedTimesheets()
+          : Promise.resolve({ data: [] }),
+        menuSettings.travelEnabled
+          ? api.get(`/api/travel-requests/employee/${user.id}`)
+          : Promise.resolve({ data: [] }),
       ]);
 
       const leaveRows = Array.isArray(leaveResponse.data) ? leaveResponse.data : [];
       const timesheetRows = Array.isArray(timesheetResponse.data) ? timesheetResponse.data : [];
       const travelRows = Array.isArray(travelResponse.data) ? travelResponse.data : [];
 
-      const pendingLeaves = leaveRows.filter(
-        (row: any) => String(row?.status || "").toUpperCase() === "PENDING"
-      ).length;
-      const pendingTimesheets = timesheetRows.filter((row: any) => {
-        const status = String(row?.status || "").toUpperCase();
-        return status === "PENDING" || status === "SUBMITTED";
-      }).length;
-      const pendingTravel = travelRows.filter((row: any) => {
-        const status = String(row?.status || "").toUpperCase();
-        return status === "PENDING" || status === "IN_PROGRESS";
-      }).length;
-      const submittedGoals = timesheetRows.filter((row: any) => {
-        const status = String(row?.status || "").toUpperCase();
-        return status === "APPROVED" || status === "PAID";
-      }).length;
+      const pendingLeaves = menuSettings.leaveManagementEnabled
+        ? leaveRows.filter((row: any) => String(row?.status || "").toUpperCase() === "PENDING").length
+        : 0;
+      const pendingTimesheets = menuSettings.timesheetEnabled
+        ? timesheetRows.filter((row: any) => {
+            const status = String(row?.status || "").toUpperCase();
+            return status === "PENDING" || status === "SUBMITTED";
+          }).length
+        : 0;
+      const pendingTravel = menuSettings.travelEnabled
+        ? travelRows.filter((row: any) => {
+            const status = String(row?.status || "").toUpperCase();
+            return status === "PENDING" || status === "IN_PROGRESS";
+          }).length
+        : 0;
+      const submittedGoals = menuSettings.timesheetEnabled
+        ? timesheetRows.filter((row: any) => {
+            const status = String(row?.status || "").toUpperCase();
+            return status === "APPROVED" || status === "PAID";
+          }).length
+        : 0;
 
       setEmployeeTaskSummary({
         pendingLeaves,
@@ -1410,6 +1509,236 @@ export default function Dashboard() {
         pendingTravel: 0,
         submittedGoals: 0,
       });
+    }
+  };
+
+  const fetchDashboardNotifications = async () => {
+    if (!user?.id || isMainAdmin) {
+      setNotifications([]);
+      return;
+    }
+
+    const role = currentUserRole;
+    const isNotificationEmployee = role === "employee";
+    const isOrgAdminOrHr = role === "org_admin" || role === "hr";
+    const canApproveLeave = menuSettings.leaveManagementEnabled && hasPermission("approve", "leave");
+    const canApproveTimesheet = menuSettings.timesheetEnabled && hasPermission("approve", "timesheet");
+    const canApproveTravel =
+      menuSettings.travelEnabled &&
+      (hasPermission("approve", "travel") || hasPermission("approve", "expenses"));
+    const canApproveExpenses = menuSettings.expenseEnabled && hasPermission("approve", "expenses");
+    const sinceMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const computeNotificationLatestAt = (rows: any[]) => {
+      const parsed = rows
+        .map((row: any) => parseNotificationTimestamp(row))
+        .filter((value): value is number => value != null);
+      if (parsed.length > 0) {
+        return Math.max(...parsed);
+      }
+      const maxId = rows.reduce((max, row) => Math.max(max, Number(row?.id) || 0), 0);
+      return maxId > 0 ? maxId : 0;
+    };
+    const pickLatestNotificationRow = (rows: any[]) => {
+      if (!rows || rows.length === 0) return null;
+      return rows.reduce((latest: any, row: any) => {
+        if (!latest) return row;
+        const latestTs = parseNotificationTimestamp(latest) ?? 0;
+        const rowTs = parseNotificationTimestamp(row) ?? 0;
+        if (rowTs !== latestTs) return rowTs > latestTs ? row : latest;
+        const latestId = Number(latest?.id) || 0;
+        const rowId = Number(row?.id) || 0;
+        return rowId > latestId ? row : latest;
+      }, null);
+    };
+
+
+    const requests: Promise<unknown>[] = [];
+    const keys: string[] = [];
+    const addRequest = (key: string, request: Promise<unknown>) => {
+      keys.push(key);
+      requests.push(request);
+    };
+
+    if (menuSettings.leaveManagementEnabled) {
+      addRequest(
+        "leave",
+        isNotificationEmployee
+          ? api.get(`/api/leave-requests/employee/${user.id}`)
+          : api.get("/api/leave-requests")
+      );
+    }
+    if (menuSettings.timesheetEnabled && (canApproveTimesheet || isNotificationEmployee || isOrgAdminOrHr)) {
+      addRequest(
+        "timesheet",
+        isNotificationEmployee ? api.get(`/api/timesheet/employee/${user.id}`) : api.get("/api/timesheet")
+      );
+    }
+    if (menuSettings.travelEnabled) {
+      addRequest(
+        "travel",
+        isNotificationEmployee
+          ? api.get(`/api/travel-requests/employee/${user.id}`)
+          : canApproveTravel
+            ? api.get("/api/travel-requests/pending")
+            : api.get("/api/travel-requests")
+      );
+    }
+    if (menuSettings.expenseEnabled) {
+      addRequest(
+        "expense",
+        isNotificationEmployee
+          ? api.get(`/api/expenses/employee/${user.id}`)
+          : canApproveExpenses
+            ? api.get("/api/expenses/pending")
+            : api.get("/api/expenses")
+      );
+    }
+    if (menuSettings.timesheetEnabled && (isNotificationEmployee || isOrgAdminOrHr)) {
+      addRequest("projects", api.get("/api/projects"));
+    }
+
+    try {
+      const settled = await Promise.allSettled(requests);
+      const responseByKey: Record<string, any> = {};
+      settled.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          responseByKey[keys[index]] = result.value;
+        }
+      });
+
+      const items: DashboardNotificationItem[] = [];
+
+      if (responseByKey.leave?.data) {
+        const rows = Array.isArray(responseByKey.leave.data) ? responseByKey.leave.data : [];
+        const relevantRows = isNotificationEmployee
+          ? rows.filter((row: any) => {
+              const status = String(row?.status || "").toUpperCase();
+              const updatedAt = parseNotificationTimestamp(row);
+              return updatedAt != null && updatedAt >= sinceMs && status !== "PENDING";
+            })
+          : rows.filter((row: any) => {
+              const updatedAt = parseNotificationTimestamp(row);
+              return updatedAt != null && updatedAt >= sinceMs;
+            });
+        if (relevantRows.length > 0) {
+          items.push({
+            key: "leave",
+            label: isNotificationEmployee ? "Leave updates" : "Leave activity",
+            count: relevantRows.length,
+            href: canApproveLeave ? "/leave/approvals" : "/leave",
+            latestAt: Math.max(...relevantRows.map((row: any) => parseNotificationTimestamp(row) || 0)),
+          });
+        }
+      }
+
+      if (responseByKey.timesheet?.data) {
+        const rows = Array.isArray(responseByKey.timesheet.data) ? responseByKey.timesheet.data : [];
+        const relevantRows = rows.filter((row: any) => {
+          const updatedAt = parseNotificationTimestamp(row);
+          return updatedAt != null && updatedAt >= sinceMs;
+        });
+        if (relevantRows.length > 0) {
+          items.push({
+            key: "timesheet",
+            label: canApproveTimesheet ? "Timesheet updates" : "Timesheet activity",
+            count: relevantRows.length,
+            href: canApproveTimesheet ? "/timesheet/approvals" : "/timesheet",
+            latestAt: Math.max(...relevantRows.map((row: any) => parseNotificationTimestamp(row) || 0)),
+          });
+        }
+      }
+
+      if (responseByKey.travel?.data) {
+        const rows = Array.isArray(responseByKey.travel.data) ? responseByKey.travel.data : [];
+        const relevantRows = isNotificationEmployee
+          ? rows.filter((row: any) => {
+              const status = String(
+                row?.status || row?.firstLevelApprovalStatus || row?.secondLevelApprovalStatus || ""
+              ).toUpperCase();
+              const updatedAt = parseNotificationTimestamp(row);
+              return updatedAt != null && updatedAt >= sinceMs && status !== "PENDING" && status !== "IN_PROGRESS";
+            })
+          : canApproveTravel
+            ? rows
+            : rows.filter((row: any) => {
+                const updatedAt = parseNotificationTimestamp(row);
+                return updatedAt != null && updatedAt >= sinceMs;
+              });
+        if (relevantRows.length > 0) {
+          const latestRow = pickLatestNotificationRow(relevantRows);
+          items.push({
+            key: "travel",
+            label: isNotificationEmployee
+              ? "Travel updates"
+              : canApproveTravel
+                ? "Travel approvals pending"
+                : "Travel activity",
+            count: relevantRows.length,
+            href: canApproveTravel ? "/travel/approvals" : "/travel",
+            latestAt: computeNotificationLatestAt(relevantRows),
+            itemType: canApproveTravel ? "travel" : undefined,
+            itemId: canApproveTravel ? Number(latestRow?.id) || undefined : undefined,
+          });
+        }
+      }
+
+      if (responseByKey.expense?.data) {
+        const rows = Array.isArray(responseByKey.expense.data) ? responseByKey.expense.data : [];
+        const relevantRows = isNotificationEmployee
+          ? rows.filter((row: any) => {
+              const status = String(
+                row?.status || row?.firstLevelApprovalStatus || row?.secondLevelApprovalStatus || ""
+              ).toUpperCase();
+              const updatedAt = parseNotificationTimestamp(row);
+              return updatedAt != null && updatedAt >= sinceMs && status !== "PENDING" && status !== "IN_PROGRESS";
+            })
+          : canApproveExpenses
+            ? rows
+            : rows.filter((row: any) => {
+                const updatedAt = parseNotificationTimestamp(row);
+                return updatedAt != null && updatedAt >= sinceMs;
+              });
+        if (relevantRows.length > 0) {
+          const latestRow = pickLatestNotificationRow(relevantRows);
+          items.push({
+            key: "expense",
+            label: isNotificationEmployee
+              ? "Expense updates"
+              : canApproveExpenses
+                ? "Expense approvals pending"
+                : "Expense activity",
+            count: relevantRows.length,
+            href: canApproveExpenses ? "/travel/approvals" : "/travel",
+            latestAt: computeNotificationLatestAt(relevantRows),
+            itemType: canApproveExpenses ? "expense" : undefined,
+            itemId: canApproveExpenses ? Number(latestRow?.id) || undefined : undefined,
+          });
+        }
+      }
+
+      if (responseByKey.projects?.data) {
+        const rows = Array.isArray(responseByKey.projects.data) ? responseByKey.projects.data : [];
+        const relevantProjects = isNotificationEmployee
+          ? rows.filter((project: any) =>
+              String(project?.status || "").toUpperCase() === "ACTIVE" &&
+              Array.isArray(project.employeeIds) &&
+              project.employeeIds.includes(Number(user.id))
+            )
+          : rows.filter((project: any) => String(project?.status || "").toUpperCase() === "ACTIVE");
+        if (relevantProjects.length > 0) {
+          items.push({
+            key: "projects",
+            label: isNotificationEmployee ? "Project updates" : "Active projects",
+            count: relevantProjects.length,
+            href: isNotificationEmployee ? "/timesheet" : "/project-management",
+            latestAt: relevantProjects.length,
+          });
+        }
+      }
+
+      setNotifications(items);
+    } catch {
+      setNotifications([]);
     }
   };
 
@@ -1475,6 +1804,48 @@ export default function Dashboard() {
     } finally {
       setAnnouncementBusy(false);
     }
+  };
+
+  const handleNotificationClick = (item: DashboardNotificationItem) => {
+    const nextState = {
+      ...notificationReads,
+      [item.key]: item.latestAt,
+    };
+    setNotificationReads(nextState);
+    writeNotificationState(notificationStorageKey, nextState);
+    setIsNotificationOpen(false);
+    if (item.itemType && item.itemId != null) {
+      const query = new URLSearchParams({
+        notificationId: `${item.key}-${item.latestAt}`,
+        type: item.itemType,
+        itemId: String(item.itemId),
+      });
+      navigate(`${item.href}?${query.toString()}`);
+      return;
+    }
+    navigate(item.href);
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    if (notifications.length === 0) return;
+    const nextState = notifications.reduce<Record<string, number>>(
+      (acc, item) => {
+        acc[item.key] = item.latestAt;
+        return acc;
+      },
+      { ...notificationReads }
+    );
+    setNotificationReads(nextState);
+    writeNotificationState(notificationStorageKey, nextState);
+  };
+
+  const handleMarkNotificationRead = (item: DashboardNotificationItem) => {
+    const nextState = {
+      ...notificationReads,
+      [item.key]: item.latestAt,
+    };
+    setNotificationReads(nextState);
+    writeNotificationState(notificationStorageKey, nextState);
   };
 
   const punchErrorMessage = (err: unknown) => {
@@ -1616,6 +1987,14 @@ export default function Dashboard() {
         }
       );
     }
+    if (menuSettings.timesheetEnabled && isHrOrOrgAdmin) {
+      cards.push({
+        title: "Active Projects",
+        value: stats.activeProjects,
+        subtitle: "Timesheet-linked projects",
+        percent: stats.activeProjects > 0 ? 100 : 0,
+      });
+    }
     if (menuSettings.recruitmentEnabled && shouldShowPeopleInsights) {
       cards.push({
         title: "Open Positions",
@@ -1635,9 +2014,11 @@ export default function Dashboard() {
     return cards;
   }, [
     menuSettings.attendanceEnabled,
+    menuSettings.timesheetEnabled,
     menuSettings.recruitmentEnabled,
     menuSettings.leaveManagementEnabled,
     canManageEmployees,
+    isHrOrOrgAdmin,
     shouldShowPeopleInsights,
     todayPunchIns,
     punchInPercent,
@@ -1646,6 +2027,7 @@ export default function Dashboard() {
     presentCount,
     presentPercent,
     stats.openPositions,
+    stats.activeProjects,
     stats.leaveRequests,
   ]);
   const chartPalette = ["#34d399", "#60a5fa", "#f59e0b", "#ef4444", "#8b5cf6", "#14b8a6"];
@@ -1683,16 +2065,27 @@ export default function Dashboard() {
       dayjs(activity.timestamp).isAfter(dayjs().subtract(30, "day"))
     );
     const onboarded = inLast30Days.filter((item) => item.type === "employee").length;
-    const leaveUpdates = inLast30Days.filter((item) => item.type === "leave").length;
-    const timesheetUpdates = inLast30Days.filter((item) => item.type === "timesheet").length;
-    const hiringUpdates = inLast30Days.filter((item) => item.type === "job").length;
+    const leaveUpdates = menuSettings.leaveManagementEnabled
+      ? inLast30Days.filter((item) => item.type === "leave").length
+      : 0;
+    const timesheetUpdates = menuSettings.timesheetEnabled
+      ? inLast30Days.filter((item) => item.type === "timesheet").length
+      : 0;
+    const hiringUpdates = menuSettings.recruitmentEnabled
+      ? inLast30Days.filter((item) => item.type === "job").length
+      : 0;
     return {
       onboarded,
       leaveUpdates,
       timesheetUpdates,
       hiringUpdates,
     };
-  }, [recentActivities]);
+  }, [
+    recentActivities,
+    menuSettings.leaveManagementEnabled,
+    menuSettings.timesheetEnabled,
+    menuSettings.recruitmentEnabled,
+  ]);
   const totalPendingApprovals = adminApprovalMetrics.reduce(
     (sum, metric) => sum + Number(metric.count || 0),
     0
@@ -1713,6 +2106,18 @@ export default function Dashboard() {
     (sum, org) => sum + Number(org.maxActiveUsers || 0),
     0
   );
+  const totalActiveProjects = organizationOverview.reduce(
+    (sum, org) =>
+      sum + (org.timesheetEnabled === false ? 0 : Number(org.activeProjectCount || 0)),
+    0
+  );
+  const unreadNotifications = notifications.filter(
+    (item) => (notificationReads[item.key] || 0) < item.latestAt
+  );
+  const unreadNotificationCount = unreadNotifications.reduce(
+    (sum, item) => sum + Number(item.count || 0),
+    0
+  );
 
   if (isMainAdmin) {
     return (
@@ -1731,6 +2136,7 @@ export default function Dashboard() {
               { title: "Disabled Organizations", value: disabledOrganizations, tone: "text-rose-700" },
               { title: "Registered Users", value: totalRegisteredUsers, tone: "text-sky-700" },
               { title: "Active Users", value: totalActiveUsers, tone: "text-indigo-700" },
+                { title: "Active Projects", value: totalActiveProjects, tone: "text-cyan-700" },
               { title: "Active User Capacity", value: totalActiveCapacity, tone: "text-violet-700" },
             ].map((item) => (
               <div key={item.title} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
@@ -1756,6 +2162,7 @@ export default function Dashboard() {
                   <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Code</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Registered Users</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Active Users</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Active Projects</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Active Limit</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-slate-500">Status</th>
                 </tr>
@@ -1767,6 +2174,9 @@ export default function Dashboard() {
                     <td className="px-4 py-2 text-sm text-slate-700">{org.code || "-"}</td>
                     <td className="px-4 py-2 text-sm text-slate-700">{org.userCount || 0}</td>
                     <td className="px-4 py-2 text-sm text-slate-700">{org.activeUserCount || 0}</td>
+                    <td className="px-4 py-2 text-sm text-slate-700">
+                      {org.timesheetEnabled === false ? "-" : org.activeProjectCount || 0}
+                    </td>
                     <td className="px-4 py-2 text-sm text-slate-700">{org.maxActiveUsers || 0}</td>
                     <td className="px-4 py-2 text-sm">
                       <span
@@ -1781,7 +2191,7 @@ export default function Dashboard() {
                 ))}
                 {organizationOverview.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-sm text-slate-500">
+                    <td colSpan={7} className="py-8 text-center text-sm text-slate-500">
                       No organization data available.
                     </td>
                   </tr>
@@ -1796,14 +2206,102 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-4 rounded-3xl bg-gradient-to-b from-slate-50 via-white to-sky-50/40 p-3 pb-5">
-      <section className="overflow-hidden rounded-3xl border border-slate-200/70 bg-white shadow-sm">
+      <section className="overflow-visible rounded-3xl border border-slate-200/70 bg-white shadow-sm">
         <div className="bg-gradient-to-r from-sky-700 via-blue-700 to-indigo-700 px-5 py-4 text-white">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Welcome back, {profileName}!</h1>
               <p className="mt-1 text-sm text-sky-50">{dayjs().format("dddd, DD MMM YYYY")}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {!isMainAdmin && (
+                <div ref={notificationDropdownRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsNotificationOpen((prev) => !prev)}
+                    className="relative inline-flex items-center rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:bg-white/20"
+                  >
+                    <Bell className="mr-1 h-3.5 w-3.5" />
+                    Notifications
+                    {unreadNotificationCount > 0 && (
+                      <span className="ml-2 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-sky-700">
+                        {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                      </span>
+                    )}
+                  </button>
+                  {isNotificationOpen && (
+                    <div className="absolute right-0 top-full z-[60] mt-2 w-80 max-h-80 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 text-slate-900 shadow-2xl ring-1 ring-black/5">
+                      <div className="flex items-center justify-between px-2 py-1">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Notifications
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                            Unread: {unreadNotificationCount}
+                          </span>
+                          {unreadNotificationCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleMarkAllNotificationsRead}
+                              className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100"
+                            >
+                              Mark as read
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-1 space-y-1">
+                        {notifications.length > 0 ? (
+                          notifications.map((item) => {
+                            const isUnread = (notificationReads[item.key] || 0) < item.latestAt;
+                            return (
+                              <div
+                                key={item.key}
+                                className={`rounded-xl border px-3 py-2 transition ${
+                                  isUnread
+                                    ? "border-sky-200 bg-sky-50 hover:bg-sky-100"
+                                    : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleNotificationClick(item)}
+                                    className="flex min-w-0 flex-1 items-center justify-between text-left"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold text-slate-800">{item.label}</p>
+                                      <p className="text-[11px] text-slate-500">{isUnread ? "Unread" : "Read"}</p>
+                                    </div>
+                                    <span className={`ml-2 rounded-full px-2 py-1 text-xs font-semibold ${
+                                      isUnread ? "bg-sky-100 text-sky-700" : "bg-slate-200 text-slate-600"
+                                    }`}>
+                                      {item.count}
+                                    </span>
+                                  </button>
+                                  {isUnread && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMarkNotificationRead(item)}
+                                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100"
+                                    >
+                                      Mark read
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-slate-300 p-3 text-sm text-slate-500">
+                            No recent notifications.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {topActions.slice(0, 3).map((action) => (
                 <Link
                   key={action.name}
@@ -1899,7 +2397,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {!isMainAdmin && (
+        {!isMainAdmin && menuSettings.leaveManagementEnabled && (
           <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-4 shadow-sm lg:col-span-2">
             <h2 className="text-sm font-semibold text-violet-900">Leave Balance</h2>
             <p className="mt-1 text-xs text-slate-500">{leaveBalanceSummary.totalRemaining} days remaining</p>
@@ -1945,7 +2443,7 @@ export default function Dashboard() {
           <div className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-blue-50 p-4 shadow-sm lg:col-span-6">
             <h2 className="mb-2 text-sm font-semibold text-indigo-900">Live KPI Overview</h2>
             <div className="grid grid-cols-2 gap-2">
-              {statusCards.slice(0, 4).map((card, index) => (
+              {statusCards.map((card, index) => (
                 <div
                   key={card.title}
                   className={`rounded-xl border px-3 py-2 ${
@@ -2011,10 +2509,26 @@ export default function Dashboard() {
           <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-yellow-50 p-4 shadow-sm lg:col-span-3">
             <h2 className="text-sm font-semibold text-amber-900">Tasks / Goals</h2>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-lg bg-amber-50 px-2 py-1 text-amber-700">Leave: {employeeTaskSummary.pendingLeaves}</div>
-              <div className="rounded-lg bg-sky-50 px-2 py-1 text-sky-700">Timesheet: {employeeTaskSummary.pendingTimesheets}</div>
-              <div className="rounded-lg bg-violet-50 px-2 py-1 text-violet-700">Travel: {employeeTaskSummary.pendingTravel}</div>
-              <div className="rounded-lg bg-emerald-50 px-2 py-1 text-emerald-700">Done: {employeeTaskSummary.submittedGoals}</div>
+              {menuSettings.leaveManagementEnabled && (
+                <div className="rounded-lg bg-amber-50 px-2 py-1 text-amber-700">
+                  Leave: {employeeTaskSummary.pendingLeaves}
+                </div>
+              )}
+              {menuSettings.timesheetEnabled && (
+                <div className="rounded-lg bg-sky-50 px-2 py-1 text-sky-700">
+                  Timesheet: {employeeTaskSummary.pendingTimesheets}
+                </div>
+              )}
+              {menuSettings.travelEnabled && (
+                <div className="rounded-lg bg-violet-50 px-2 py-1 text-violet-700">
+                  Travel: {employeeTaskSummary.pendingTravel}
+                </div>
+              )}
+              {menuSettings.timesheetEnabled && (
+                <div className="rounded-lg bg-emerald-50 px-2 py-1 text-emerald-700">
+                  Done: {employeeTaskSummary.submittedGoals}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2087,9 +2601,15 @@ export default function Dashboard() {
             <h2 className="mb-2 text-sm font-semibold text-indigo-900">Employee Lifecycle</h2>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="rounded-lg bg-indigo-50 px-2 py-2">Onboarded: <span className="font-semibold">{lifecycleSnapshot.onboarded}</span></div>
-              <div className="rounded-lg bg-sky-50 px-2 py-2">Leave: <span className="font-semibold">{lifecycleSnapshot.leaveUpdates}</span></div>
-              <div className="rounded-lg bg-cyan-50 px-2 py-2">Timesheet: <span className="font-semibold">{lifecycleSnapshot.timesheetUpdates}</span></div>
-              <div className="rounded-lg bg-blue-50 px-2 py-2">Hiring: <span className="font-semibold">{lifecycleSnapshot.hiringUpdates}</span></div>
+              {menuSettings.leaveManagementEnabled && (
+                <div className="rounded-lg bg-sky-50 px-2 py-2">Leave: <span className="font-semibold">{lifecycleSnapshot.leaveUpdates}</span></div>
+              )}
+              {menuSettings.timesheetEnabled && (
+                <div className="rounded-lg bg-cyan-50 px-2 py-2">Timesheet: <span className="font-semibold">{lifecycleSnapshot.timesheetUpdates}</span></div>
+              )}
+              {menuSettings.recruitmentEnabled && (
+                <div className="rounded-lg bg-blue-50 px-2 py-2">Hiring: <span className="font-semibold">{lifecycleSnapshot.hiringUpdates}</span></div>
+              )}
             </div>
           </div>
         )}

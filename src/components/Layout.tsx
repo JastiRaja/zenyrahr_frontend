@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   Users,
@@ -9,7 +9,6 @@ import {
   Plane,
   UserPlus,
   LogOut,
-  Bell,
   Menu,
   X,
   Home,
@@ -18,6 +17,9 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import logo from "../assets/logo.jpeg";
 import api from "../api/axios";
+import useOrganizationMenuSettings, {
+  type OrganizationMenuSettings,
+} from "../hooks/useOrganizationMenuSettings";
 
 type AppUser = {
   role?: string;
@@ -37,26 +39,6 @@ type NavigationItem = {
   icon: typeof ClipboardCheck;
   show: () => boolean;
   submenu?: NavigationSubItem[];
-};
-
-type OrganizationMenuSettings = {
-  employeeManagementEnabled: boolean;
-  selfServiceEnabled: boolean;
-  attendanceEnabled: boolean;
-  timesheetEnabled: boolean;
-  recruitmentEnabled: boolean;
-  leaveManagementEnabled: boolean;
-  holidayManagementEnabled: boolean;
-  payrollEnabled: boolean;
-  travelEnabled: boolean;
-  expenseEnabled: boolean;
-};
-
-type ApprovalNotificationItem = {
-  key: string;
-  label: string;
-  count: number;
-  href: string;
 };
 
 const toAbsoluteLogoUrl = (rawUrl: string) => {
@@ -182,6 +164,11 @@ const getNavigation = (
     submenu: [
       { name: "My Timesheet", href: "/timesheet", show: () => true },
       {
+        name: "My Projects",
+        href: "/timesheet/projects",
+        show: () => true,
+      },
+      {
         name: "Submit Time",
         href: "/timesheet/submit",
         show: () => hasPermission("submit", "timesheet"),
@@ -189,7 +176,7 @@ const getNavigation = (
       {
         name: "Approvals",
         href: "/timesheet/approvals",
-        show: () => hasPermission("approve", "timesheet") && hasPermission("manage", "employees"),
+        show: () => hasPermission("approve", "timesheet"),
       },
     ],
   },
@@ -266,77 +253,11 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, hasPermission } = useAuth();
+  const { menuSettings } = useOrganizationMenuSettings();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const [menuSettings, setMenuSettings] = useState<OrganizationMenuSettings>({
-    employeeManagementEnabled: true,
-    selfServiceEnabled: true,
-    attendanceEnabled: true,
-    timesheetEnabled: true,
-    recruitmentEnabled: true,
-    leaveManagementEnabled: true,
-    holidayManagementEnabled: true,
-    payrollEnabled: true,
-    travelEnabled: true,
-    expenseEnabled: true,
-  });
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [approvalNotifications, setApprovalNotifications] = useState<ApprovalNotificationItem[]>([]);
-  const [newApprovalToast, setNewApprovalToast] = useState<{ delta: number } | null>(null);
   const [organizationLogoUrl, setOrganizationLogoUrl] = useState<string>("");
   const [organizationName, setOrganizationName] = useState<string>("");
-  const previousNotificationCountRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const role = user?.role?.toLowerCase?.() || "";
-    if (!user || role === "admin") {
-      setMenuSettings({
-        employeeManagementEnabled: true,
-        selfServiceEnabled: true,
-        attendanceEnabled: true,
-        timesheetEnabled: true,
-        recruitmentEnabled: true,
-        leaveManagementEnabled: true,
-        holidayManagementEnabled: true,
-        payrollEnabled: true,
-        travelEnabled: true,
-        expenseEnabled: true,
-      });
-      return;
-    }
-    const loadMenuSettings = async () => {
-      try {
-        const response = await api.get("/api/organizations/current/menu-settings");
-        setMenuSettings({
-          employeeManagementEnabled: response.data?.employeeManagementEnabled !== false,
-          selfServiceEnabled: response.data?.selfServiceEnabled !== false,
-          attendanceEnabled: response.data?.attendanceEnabled !== false,
-          timesheetEnabled: response.data?.timesheetEnabled !== false,
-          recruitmentEnabled: response.data?.recruitmentEnabled !== false,
-          leaveManagementEnabled: response.data?.leaveManagementEnabled !== false,
-          holidayManagementEnabled: response.data?.holidayManagementEnabled !== false,
-          payrollEnabled: response.data?.payrollEnabled !== false,
-          travelEnabled: response.data?.travelEnabled !== false,
-          expenseEnabled: response.data?.expenseEnabled !== false,
-        });
-      } catch {
-        setMenuSettings({
-          employeeManagementEnabled: true,
-          selfServiceEnabled: true,
-          attendanceEnabled: true,
-          timesheetEnabled: true,
-          recruitmentEnabled: true,
-          leaveManagementEnabled: true,
-          holidayManagementEnabled: true,
-          payrollEnabled: true,
-          travelEnabled: true,
-          expenseEnabled: true,
-        });
-      }
-    };
-    loadMenuSettings();
-  }, [user?.id, user?.role]);
 
   useEffect(() => {
     const loadOrganizationBranding = async () => {
@@ -362,124 +283,6 @@ export default function Layout() {
 
   const navigation = getNavigation(hasPermission, user, menuSettings);
 
-  useEffect(() => {
-    const fetchApprovalNotifications = async () => {
-      if (!user?.id) {
-        setApprovalNotifications([]);
-        setNotificationCount(0);
-        return;
-      }
-
-      const canApproveLeave = menuSettings.leaveManagementEnabled && hasPermission("approve", "leave");
-      const canApproveTimesheet = menuSettings.timesheetEnabled && hasPermission("approve", "timesheet");
-      const canApproveTravel = menuSettings.travelEnabled && hasPermission("approve", "travel");
-      const canApproveExpenses = menuSettings.expenseEnabled && hasPermission("approve", "expenses");
-
-      if (!canApproveLeave && !canApproveTimesheet && !canApproveTravel && !canApproveExpenses) {
-        setApprovalNotifications([]);
-        setNotificationCount(0);
-        return;
-      }
-
-      const requests: Promise<unknown>[] = [];
-      const keys: string[] = [];
-      const addRequest = (key: string, request: Promise<unknown>) => {
-        keys.push(key);
-        requests.push(request);
-      };
-
-      if (canApproveLeave) addRequest("leave", api.get("/api/leave-requests"));
-      if (canApproveTimesheet) addRequest("timesheet", api.get("/api/timesheet"));
-      if (canApproveTravel) addRequest("travel", api.get("/api/travel-requests/pending"));
-      if (canApproveExpenses) addRequest("expense", api.get("/api/expenses/pending"));
-
-      try {
-        const settled = await Promise.allSettled(requests);
-        const responseByKey: Record<string, any> = {};
-        settled.forEach((result, index) => {
-          if (result.status === "fulfilled") {
-            responseByKey[keys[index]] = result.value;
-          }
-        });
-
-        const items: ApprovalNotificationItem[] = [];
-        if (responseByKey.leave?.data) {
-          const rows = Array.isArray(responseByKey.leave.data) ? responseByKey.leave.data : [];
-          const pendingCount = rows.filter((row: any) => {
-            const status = String(row?.status || "").toUpperCase();
-            const revokePending = Boolean(row?.revocationRequested) && status === "APPROVED";
-            return status === "PENDING" || status === "REVOCATION_PENDING" || revokePending;
-          }).length;
-          if (pendingCount > 0) {
-            items.push({ key: "leave", label: "Leave approvals", count: pendingCount, href: "/leave/approvals" });
-          }
-        }
-
-        if (responseByKey.timesheet?.data) {
-          const rows = Array.isArray(responseByKey.timesheet.data) ? responseByKey.timesheet.data : [];
-          const pendingCount = rows.filter((row: any) => {
-            const status = String(row?.status || "").toUpperCase();
-            return status === "PENDING" || status === "SUBMITTED";
-          }).length;
-          if (pendingCount > 0) {
-            items.push({ key: "timesheet", label: "Timesheet approvals", count: pendingCount, href: "/timesheet/approvals" });
-          }
-        }
-
-        if (responseByKey.travel?.data) {
-          const rows = Array.isArray(responseByKey.travel.data) ? responseByKey.travel.data : [];
-          if (rows.length > 0) {
-            items.push({ key: "travel", label: "Travel approvals", count: rows.length, href: "/travel/approvals" });
-          }
-        }
-
-        if (responseByKey.expense?.data) {
-          const rows = Array.isArray(responseByKey.expense.data) ? responseByKey.expense.data : [];
-          if (rows.length > 0) {
-            items.push({ key: "expense", label: "Expense approvals", count: rows.length, href: "/travel/approvals" });
-          }
-        }
-
-        setApprovalNotifications(items);
-        setNotificationCount(items.reduce((sum, item) => sum + item.count, 0));
-      } catch {
-        setApprovalNotifications([]);
-        setNotificationCount(0);
-      }
-    };
-
-    fetchApprovalNotifications();
-    const interval = setInterval(fetchApprovalNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [
-    user?.id,
-    hasPermission,
-    menuSettings.leaveManagementEnabled,
-    menuSettings.timesheetEnabled,
-    menuSettings.travelEnabled,
-    menuSettings.expenseEnabled,
-  ]);
-
-  useEffect(() => {
-    setIsNotificationOpen(false);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    const previous = previousNotificationCountRef.current;
-    if (previous != null && notificationCount > previous) {
-      const delta = notificationCount - previous;
-      setNewApprovalToast({ delta });
-      const timer = setTimeout(() => setNewApprovalToast(null), 3500);
-      return () => clearTimeout(timer);
-    }
-    previousNotificationCountRef.current = notificationCount;
-    return;
-  }, [notificationCount]);
-
-  useEffect(() => {
-    previousNotificationCountRef.current = notificationCount;
-  }, [approvalNotifications.length, notificationCount]);
-
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -494,14 +297,6 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      {newApprovalToast && (
-        <div className="fixed right-5 top-5 z-[70] rounded-xl border border-sky-200 bg-white/95 px-3 py-2 shadow-xl backdrop-blur">
-          <p className="text-xs font-semibold text-sky-700">
-            +{newApprovalToast.delta} new approval{newApprovalToast.delta > 1 ? "s" : ""}
-          </p>
-          <p className="text-[11px] text-slate-600">Review pending requests in notifications.</p>
-        </div>
-      )}
       <div className="flex h-screen overflow-hidden p-2 sm:p-3">
         {/* Sidebar */}
         <div
@@ -619,44 +414,6 @@ export default function Layout() {
                   <p className="text-xs text-slate-300">{user?.role}</p>
                 </div>
                 <div className="ml-auto flex items-center gap-1">
-                  {approvalNotifications.length > 0 && (
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setIsNotificationOpen((prev) => !prev)}
-                        className="relative p-2 text-white/70 transition-colors duration-200 hover:text-white"
-                        title="Approval notifications"
-                      >
-                        <Bell className="h-5 w-5" />
-                        {notificationCount > 0 && (
-                          <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
-                            {notificationCount > 99 ? "99+" : notificationCount}
-                          </span>
-                        )}
-                      </button>
-                      {isNotificationOpen && (
-                        <div className="absolute bottom-10 right-0 z-50 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
-                          <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Pending approvals
-                          </p>
-                          <div className="mt-1 space-y-1">
-                            {approvalNotifications.map((item) => (
-                              <Link
-                                key={item.key}
-                                to={item.href}
-                                className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-                              >
-                                <span>{item.label}</span>
-                                <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700">
-                                  {item.count}
-                                </span>
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                   <button
                     onClick={handleLogout}
                     className="p-2 text-white/70 transition-colors duration-200 hover:text-white"

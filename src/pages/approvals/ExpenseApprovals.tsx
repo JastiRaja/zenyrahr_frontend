@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import api from "../../api/axios";
 import dayjs from "dayjs";
 import { Check, X, Search } from "lucide-react";
@@ -82,6 +83,8 @@ const ExpenseStatus = ({
 
 export default function ExpenseApprovals() {
   const { user } = useAuth();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [pendingExpenses, setPendingExpenses] = useState<Expense[]>([]);
   const [approvedExpenses, setApprovedExpenses] = useState<Expense[]>([]);
   const [pendingTravel, setPendingTravel] = useState<TravelRequest[]>([]);
@@ -102,6 +105,8 @@ export default function ExpenseApprovals() {
   const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
   const [modalComments, setModalComments] = useState("");
   const [modalError, setModalError] = useState("");
+  const [highlightedPendingKey, setHighlightedPendingKey] = useState<string | null>(null);
+  const pendingCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     if (!user?.id) {
@@ -121,6 +126,41 @@ export default function ExpenseApprovals() {
         setApprovedExpenses(approvedExp.data);
         setPendingTravel(pendingTrav.data);
         setApprovedTravel(approvedTrav.data);
+
+        // Open a specific pending request when navigated from dashboard notifications.
+        const notificationType = searchParams.get("type");
+        const itemId = Number(searchParams.get("itemId"));
+        if ((notificationType === "expense" || notificationType === "travel") && itemId > 0) {
+          const selected =
+            notificationType === "expense"
+              ? (Array.isArray(pendingExp.data)
+                  ? pendingExp.data.find((e: Expense) => Number(e.id) === itemId)
+                  : null)
+              : (Array.isArray(pendingTrav.data)
+                  ? pendingTrav.data.find((t: TravelRequest) => Number(t.id) === itemId)
+                  : null);
+          if (selected) {
+            const cardKey = `${notificationType}-${itemId}`;
+            setTabIndex(0);
+            setHighlightedPendingKey(cardKey);
+            // Scroll exact pending card into view first so user sees context.
+            setTimeout(() => {
+              pendingCardRefs.current[cardKey]?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+            }, 0);
+            // Then open details modal.
+            setTimeout(() => {
+              setSelectedRequest({ ...selected, _type: notificationType });
+            }, 180);
+            setModalComments("");
+            setModalError("");
+            setTimeout(() => setHighlightedPendingKey(null), 4000);
+          }
+          // Clear deep-link query params once consumed.
+          window.history.replaceState({}, "", location.pathname);
+        }
       } catch (err) {
         setError("Failed to fetch data.");
       } finally {
@@ -128,7 +168,7 @@ export default function ExpenseApprovals() {
       }
     };
     fetchApprovals();
-  }, [user]);
+  }, [user?.id, searchParams, location.pathname]);
 
   useEffect(() => {
     if (confirmationMessage) {
@@ -638,7 +678,14 @@ export default function ExpenseApprovals() {
               {filteredPending.map((item) => (
                 <div
                   key={`approval-card-${item._type}-${item.id}`}
-                  className="cursor-pointer rounded-md border border-slate-200 bg-slate-50 p-4 transition hover:shadow-sm"
+                  ref={(el) => {
+                    pendingCardRefs.current[`${item._type}-${item.id}`] = el;
+                  }}
+                  className={`cursor-pointer rounded-md border bg-slate-50 p-4 transition hover:shadow-sm ${
+                    highlightedPendingKey === `${item._type}-${item.id}`
+                      ? "border-sky-400 ring-2 ring-sky-200"
+                      : "border-slate-200"
+                  }`}
                   onClick={() => { setSelectedRequest(item); setModalComments(""); setModalError(""); }}
                 >
                   <div className="mb-2 flex items-center gap-2">

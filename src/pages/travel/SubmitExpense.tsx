@@ -11,7 +11,7 @@ import {
 } from "react-feather";
 import { useAuth } from "../../contexts/AuthContext"; // Import the useAuth hook
 import { IndianRupee } from "lucide-react";
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
+import api from "../../api/axios";
 
 export default function SubmitExpense() {
   const navigate = useNavigate();
@@ -46,11 +46,8 @@ export default function SubmitExpense() {
 
   const fetchExpenses = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/expenses`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch expenses");
-      }
-      const data = await response.json();
+      const response = await api.get(`/api/expenses`);
+      const data = Array.isArray(response.data) ? response.data : [];
       // Ensure documents property is always an array
       const expensesWithDocuments = data.map((expense: any) => ({
         ...expense,
@@ -191,14 +188,7 @@ export default function SubmitExpense() {
           formData.append("files", file);
         });
 
-        const response = await fetch(`${API_BASE_URL}/api/expenses`, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to submit expense");
-        }
+        await api.post(`/api/expenses`, formData);
       }
 
       setNotification("Successfully submitted");

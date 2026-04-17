@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "../../api/axios";
 import { useAuth } from "../../contexts/AuthContext";
+import useOrganizationMenuSettings from "../../hooks/useOrganizationMenuSettings";
 
-type ModuleKey = "LEAVE" | "TRAVEL" | "EXPENSE";
+type ModuleKey = "LEAVE" | "TRAVEL" | "EXPENSE" | "TIMESHEET";
 type ApproverType = "REPORTING_MANAGER" | "ROLE" | "SPECIFIC_USER";
 
 type ApprovalStep = {
@@ -36,10 +37,12 @@ const moduleLabels: Record<ModuleKey, string> = {
   LEAVE: "Leave",
   TRAVEL: "Travel",
   EXPENSE: "Expense",
+  TIMESHEET: "Timesheet",
 };
 
 export default function ApprovalHierarchy() {
   const { hasPermission } = useAuth();
+  const { menuSettings, loading: menuSettingsLoading } = useOrganizationMenuSettings();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,11 +55,26 @@ export default function ApprovalHierarchy() {
     () =>
       [...modules].sort(
         (a, b) =>
-          (["LEAVE", "TRAVEL", "EXPENSE"] as ModuleKey[]).indexOf(a.module) -
-          (["LEAVE", "TRAVEL", "EXPENSE"] as ModuleKey[]).indexOf(b.module)
+          (["LEAVE", "TIMESHEET", "TRAVEL", "EXPENSE"] as ModuleKey[]).indexOf(a.module) -
+          (["LEAVE", "TIMESHEET", "TRAVEL", "EXPENSE"] as ModuleKey[]).indexOf(b.module)
       ),
     [modules]
   );
+  const visibleModules = useMemo(() => {
+    return sortedModules.filter((moduleConfig) => {
+      if (moduleConfig.module === "LEAVE") return menuSettings.leaveManagementEnabled;
+      if (moduleConfig.module === "TIMESHEET") return menuSettings.timesheetEnabled;
+      if (moduleConfig.module === "TRAVEL") return menuSettings.travelEnabled;
+      if (moduleConfig.module === "EXPENSE") return menuSettings.expenseEnabled;
+      return true;
+    });
+  }, [
+    sortedModules,
+    menuSettings.leaveManagementEnabled,
+    menuSettings.timesheetEnabled,
+    menuSettings.travelEnabled,
+    menuSettings.expenseEnabled,
+  ]);
   const mappedLeaveRequesterRoles = useMemo(() => {
     const leaveModule = modules.find((module) => module.module === "LEAVE");
     if (!leaveModule) return [];
@@ -337,7 +355,7 @@ export default function ApprovalHierarchy() {
         <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
           <h1 className="text-3xl font-bold tracking-tight">Approval Hierarchy</h1>
           <p className="mt-1 text-sm text-sky-50">
-            Configure who approves leave, travel, and expense requests level by level.
+            Configure who approves leave, timesheet, travel, and expense requests level by level.
           </p>
         </div>
       </section>
@@ -353,13 +371,13 @@ export default function ApprovalHierarchy() {
         </div>
       )}
 
-      {loading ? (
+      {loading || menuSettingsLoading ? (
         <div className="rounded-md border border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500 shadow-sm">
           Loading hierarchy...
         </div>
       ) : (
         <>
-          {sortedModules.map((moduleConfig) => (
+          {visibleModules.map((moduleConfig) => (
             <section
               key={moduleConfig.module}
               className="rounded-md border border-slate-300 bg-white p-4 shadow-sm"
@@ -511,6 +529,12 @@ export default function ApprovalHierarchy() {
               </div>
             </section>
           ))}
+
+          {visibleModules.length === 0 && (
+            <div className="rounded-md border border-slate-300 bg-white px-4 py-6 text-sm text-slate-500 shadow-sm">
+              No approval hierarchy modules are enabled for this organization.
+            </div>
+          )}
 
           <div className="flex justify-end">
             <button
