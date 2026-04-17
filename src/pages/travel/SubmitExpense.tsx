@@ -12,6 +12,7 @@ import {
 import { useAuth } from "../../contexts/AuthContext"; // Import the useAuth hook
 import { IndianRupee } from "lucide-react";
 import api from "../../api/axios";
+import LoadingButton from "../../components/LoadingButton";
 
 export default function SubmitExpense() {
   const navigate = useNavigate();
@@ -43,6 +44,7 @@ export default function SubmitExpense() {
   const [totalAmount, setTotalAmount] = useState(0);
   const [pendingAmount, setPendingAmount] = useState(0);
   const [lastMonthAmount, setLastMonthAmount] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchExpenses = async () => {
     try {
@@ -163,6 +165,7 @@ export default function SubmitExpense() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!isAuthenticated || !user) {
       setNotification("User not authenticated. Please log in again.");
@@ -171,6 +174,7 @@ export default function SubmitExpense() {
     }
 
     try {
+      setIsSubmitting(true);
       for (const expense of formEntries) {
         const formData = new FormData();
 
@@ -198,6 +202,8 @@ export default function SubmitExpense() {
       console.error("Error submitting form:", error);
       setNotification("Submission failed");
       setTimeout(() => setNotification(null), 3000);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -449,17 +455,20 @@ export default function SubmitExpense() {
           <button
             type="button"
             onClick={addExpense}
+            disabled={isSubmitting}
             className="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Expense
           </button>
-          <button
+          <LoadingButton
             type="submit"
-            className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+            loading={isSubmitting}
+            loadingText="Submitting..."
+            className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Submit Expenses
-          </button>
+          </LoadingButton>
         </div>
       </form>
     </div>

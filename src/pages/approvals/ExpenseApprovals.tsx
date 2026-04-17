@@ -314,16 +314,16 @@ export default function ExpenseApprovals() {
 
   // Add helpers to determine if user can approve/reject at each level
   const canApproveFirstLevel = (item: Expense | TravelRequest) => {
-    if (!user) return false;
-    const role = user.role?.toLowerCase();
-    // Only manager can approve first level
-    return role === 'manager' && item.firstLevelApprovalStatus?.toLowerCase() === 'pending';
+    // Pending tab data is already filtered by backend authorization.
+    // Use stage status here so org-configured approver roles (eg: org_admin) work.
+    return item.firstLevelApprovalStatus?.toLowerCase() === 'pending';
   };
   const canApproveSecondLevel = (item: Expense | TravelRequest) => {
-    if (!user) return false;
-    const role = user.role?.toLowerCase();
-    // Only admin or HR can approve second level
-    return (role === 'admin' || role === 'hr') && item.firstLevelApprovalStatus?.toLowerCase() === 'approved' && item.secondLevelApprovalStatus?.toLowerCase() === 'pending';
+    // Eligible for second-level action after first-level approval.
+    return (
+      item.firstLevelApprovalStatus?.toLowerCase() === 'approved' &&
+      item.secondLevelApprovalStatus?.toLowerCase() === 'pending'
+    );
   };
 
   // Update modal approve/reject handlers to call correct endpoint

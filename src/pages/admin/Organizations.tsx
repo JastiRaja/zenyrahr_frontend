@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Building2, Plus, RefreshCcw } from "lucide-react";
 import api from "../../api/axios";
 import { useNavigate } from "react-router-dom";
+import LoadingButton from "../../components/LoadingButton";
 
 type Organization = {
   id: number;
@@ -450,14 +451,15 @@ export default function Organizations() {
             </div>
           </div>
           <div className="md:col-span-2">
-            <button
+            <LoadingButton
               type="submit"
-              disabled={submitting}
-              className="inline-flex items-center rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
+              loading={submitting}
+              loadingText="Creating..."
+              className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
+              leadingIcon={<Plus className="mr-2 h-4 w-4" />}
             >
-              <Plus className="mr-2 h-4 w-4" />
-              {submitting ? "Creating..." : "Create Organization"}
-            </button>
+              Create Organization
+            </LoadingButton>
           </div>
         </form>
       </section>

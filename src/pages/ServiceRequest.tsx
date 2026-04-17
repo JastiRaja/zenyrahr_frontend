@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
+import LoadingButton from "../components/LoadingButton";
 
 export default function ServiceRequest() {
   const navigate = useNavigate();
@@ -13,9 +14,11 @@ export default function ServiceRequest() {
     attachments: [] as File[],
   });
   const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!user?.id) {
       console.error("User ID is missing.");
@@ -42,6 +45,7 @@ export default function ServiceRequest() {
     });
 
     try {
+      setIsSubmitting(true);
       const response = await api.post(`/api/service-ticket`, formPayload, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -54,6 +58,8 @@ export default function ServiceRequest() {
         (error as any)?.response?.data || (error as any)?.message || error
       );
       setMessage("Error submitting service request. Please try again later.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -175,13 +181,19 @@ export default function ServiceRequest() {
           <button
             type="button"
             onClick={() => navigate("/self-service")}
+            disabled={isSubmitting}
             className="btn-secondary px-4 py-2 text-sm"
           >
             Cancel
           </button>
-          <button type="submit" className="btn-primary px-4 py-2 text-sm">
+          <LoadingButton
+            type="submit"
+            loading={isSubmitting}
+            loadingText="Submitting..."
+            className="btn-primary px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+          >
             Submit
-          </button>
+          </LoadingButton>
         </div>
       </form>
     </div>

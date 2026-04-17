@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Plus, Trash2, Save } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext"; // ✅ Get logged-in user
 import CommonDialog from "../../components/CommonDialog";
+import LoadingButton from "../../components/LoadingButton";
 import api from "../../api/axios";
 
 export default function SubmitTimesheet() {
@@ -48,6 +49,7 @@ export default function SubmitTimesheet() {
     tone: "success",
     redirectOnClose: false,
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const selectedProject = projects.find(
     (project) => Number(project.id) === Number(entries[0]?.projectId || "")
   );
@@ -117,6 +119,7 @@ export default function SubmitTimesheet() {
   // ✅ Submit Timesheet (Create or Edit)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     try {
       if (!user?.id) {
         setMessageDialog({
@@ -141,6 +144,7 @@ export default function SubmitTimesheet() {
       }));
 
       // console.log("Submitting payload:", JSON.stringify(payload, null, 2));
+      setIsSubmitting(true);
 
       if (editingEntry?.id) {
         await api.put(
@@ -171,6 +175,8 @@ export default function SubmitTimesheet() {
         tone: "error",
         redirectOnClose: false,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -382,17 +388,20 @@ export default function SubmitTimesheet() {
           <button
             type="button"
             onClick={addEntry}
+            disabled={isSubmitting}
             className="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             <Plus className="inline-block mr-1" /> Add Entry
           </button>
-          <button
+          <LoadingButton
             type="submit"
-            className="inline-flex items-center rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+            loading={isSubmitting}
+            loadingText={editingEntry?.id ? "Updating..." : "Submitting..."}
+            className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
+            leadingIcon={<Save className="mr-1 inline-block" />}
           >
-            <Save className="inline-block mr-1" />{" "}
             {editingEntry?.id ? "Update Timesheet" : "Submit Timesheet"}
-          </button>
+          </LoadingButton>
         </div>
       </form>
 

@@ -4,6 +4,7 @@ import { Briefcase, MapPin, Users, Clock, Building2, IndianRupee, X, Edit2, Chec
 import api from '../../api/axios';
 import { useAuth } from '../../contexts/AuthContext';
 import CommonDialog from '../../components/CommonDialog';
+import LoadingButton from '../../components/LoadingButton';
 
 // Define recruitment status options
 const RECRUITMENT_STATUS = {
@@ -46,6 +47,7 @@ export default function JobDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReferralForm, setShowReferralForm] = useState(false);
+  const [submittingReferral, setSubmittingReferral] = useState(false);
   const [editingStatus, setEditingStatus] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [dialogState, setDialogState] = useState<{
@@ -104,7 +106,9 @@ export default function JobDetails() {
 
   const handleReferralSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingReferral) return;
     try {
+      setSubmittingReferral(true);
       if (!job?.id) {
         throw new Error('Invalid job ID');
       }
@@ -144,6 +148,8 @@ export default function JobDetails() {
         message: errorMessage,
         tone: 'error',
       });
+    } finally {
+      setSubmittingReferral(false);
     }
   };
 
@@ -397,16 +403,20 @@ export default function JobDetails() {
                 <button
                   type="button"
                   onClick={() => setShowReferralForm(false)}
+                  disabled={submittingReferral}
                   className="btn-secondary"
                 >
                   Cancel
                 </button>
-                <button
+                <LoadingButton
                   type="submit"
-                  className="btn-primary"
+                  disabled={submittingReferral}
+                  loading={submittingReferral}
+                  loadingText="Submitting..."
+                  className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Submit Referral
-                </button>
+                </LoadingButton>
               </div>
             </form>
           </div>

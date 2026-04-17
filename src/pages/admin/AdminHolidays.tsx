@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import dayjs from "dayjs";
 import { getHolidays, addHolidays, deleteHoliday, Holiday, HolidayType } from '../../api/holidays';
 import CommonDialog from "../../components/CommonDialog";
+import LoadingButton from "../../components/LoadingButton";
 import api from "../../api/axios";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -25,6 +26,7 @@ export default function AdminHolidays() {
     type: 'GENERAL',
   });
   const [loading, setLoading] = useState(false);
+  const [addingHoliday, setAddingHoliday] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
   const [messageDialog, setMessageDialog] = useState<{
@@ -79,12 +81,14 @@ export default function AdminHolidays() {
 
   const handleAddHoliday = async (e: FormEvent) => {
     e.preventDefault();
+    if (addingHoliday) return;
     if (isMainAdmin && !selectedOrgId) {
       setError("Select an organization first.");
       return;
     }
     if (!newHoliday.date || !newHoliday.name) return;
     try {
+      setAddingHoliday(true);
       setError(null);
       await addHolidays([{ ...newHoliday, year }], selectedOrgId ? Number(selectedOrgId) : undefined);
       setNewHoliday({ date: '', name: '', type: 'GENERAL' });
@@ -97,6 +101,8 @@ export default function AdminHolidays() {
       });
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Unable to add holiday.');
+    } finally {
+      setAddingHoliday(false);
     }
   };
 
@@ -230,12 +236,14 @@ export default function AdminHolidays() {
             </select>
           </div>
           <div className="md:col-span-5">
-            <button
+            <LoadingButton
               type="submit"
-              className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+              loading={addingHoliday}
+              loadingText="Adding..."
+              className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Add Holiday
-            </button>
+            </LoadingButton>
           </div>
         </form>
       </section>

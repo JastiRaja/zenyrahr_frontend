@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../api/axios";
 import CommonDialog from "../../components/CommonDialog";
+import LoadingButton from "../../components/LoadingButton";
 
 type NamedOption = {
   name: string;
@@ -79,6 +80,7 @@ export default function AddEmployee() {
     tone: "default",
     redirectTo: null,
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const normalizeEmail = (value: string) => value.trim().toLowerCase();
   const normalizePhone = (value: string) => value.replace(/[^\d]/g, "");
@@ -251,6 +253,7 @@ export default function AddEmployee() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
 
     try {
       if (hasDuplicateConflict) {
@@ -306,7 +309,7 @@ export default function AddEmployee() {
         payload.organization = null;
       }
       delete payload.organizationId;
-
+      setSubmitting(true);
       await api.post("/auth/register", payload);
       const redirectTo = safeReturnTo
         ? safeReturnTo
@@ -335,6 +338,8 @@ export default function AddEmployee() {
         tone: "error",
         redirectTo: null,
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -678,17 +683,20 @@ export default function AddEmployee() {
           <button
             type="button"
             onClick={() => navigate(safeReturnTo || "/employees")}
+            disabled={submitting}
             className="btn-secondary"
           >
             Cancel
           </button>
-          <button
+          <LoadingButton
             type="submit"
+            loading={submitting}
+            loadingText="Registering..."
             className="btn-primary disabled:cursor-not-allowed disabled:opacity-70"
             disabled={hasDuplicateConflict || !isValidPhone || !isValidManualCode}
           >
             Register
-          </button>
+          </LoadingButton>
         </div>
       </form>
       <CommonDialog

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Briefcase, MapPin, Clock, IndianRupee, Users, X } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import LoadingButton from '../components/LoadingButton';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
@@ -348,13 +349,15 @@ export default function JobDetails() {
                 >
                   Cancel
                 </button>
-                <button
+                <LoadingButton
                   type="submit"
                   disabled={submitting}
+                  loading={submitting}
+                  loadingText="Submitting..."
                   className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
                 >
-                  {submitting ? 'Submitting...' : 'Submit Referral'}
-                </button>
+                  Submit Referral
+                </LoadingButton>
               </div>
             </form>
           </div>

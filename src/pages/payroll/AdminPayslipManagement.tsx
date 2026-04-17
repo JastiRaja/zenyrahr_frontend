@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import axios from 'axios';
 import { Modal } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
+import LoadingButton from '../../components/LoadingButton';
 
 interface Payroll {
   id: number;
@@ -536,13 +537,14 @@ const AdminPayslipManagement: React.FC = () => {
               {bankFormError && <div className="text-red-600 text-sm">{bankFormError}</div>}
               <div className="flex justify-end space-x-2">
                 <button type="button" className="px-4 py-2 bg-gray-300 rounded" onClick={() => setBankModalOpen(false)}>Cancel</button>
-                <button 
+                <LoadingButton
                   type="submit" 
+                  loading={savingBankDetails}
+                  loadingText="Saving..."
                   className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-                  disabled={savingBankDetails}
                 >
-                  {savingBankDetails ? 'Saving...' : 'Save'}
-                </button>
+                  Save
+                </LoadingButton>
               </div>
             </form>
           </div>

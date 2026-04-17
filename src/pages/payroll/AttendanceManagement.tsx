@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { getPublicHolidays, Holiday } from '../../api/holidays';
 import { CalendarDays, Search, Save, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import LoadingButton from '../../components/LoadingButton';
 
 type PunchDetails = {
   checkInTime?: string | null;
@@ -464,14 +465,16 @@ const AttendanceManagement: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <button
+            <LoadingButton
               type="submit"
-              disabled={loading || !canManuallyUpdate}
-              className="mt-3 inline-flex items-center rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60"
+              loading={loading}
+              loadingText="Saving..."
+              disabled={!canManuallyUpdate}
+              className="mt-3 rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60"
+              leadingIcon={<Save className="mr-2 h-4 w-4" />}
             >
-              <Save className="mr-2 h-4 w-4" />
-              {loading ? 'Saving...' : 'Save Attendance'}
-            </button>
+              Save Attendance
+            </LoadingButton>
           </form>
         )}
         {success && (

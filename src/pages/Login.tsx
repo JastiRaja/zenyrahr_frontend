@@ -212,10 +212,13 @@ export default function Login() {
             <motion.button
               type="submit"
               disabled={isLoading}
-              className="btn-primary w-full"
+              className="btn-primary inline-flex w-full items-center justify-center"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
+              {isLoading && (
+                <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              )}
               {isLoading ? "Signing in..." : "Sign in"}
             </motion.button>
           </form>

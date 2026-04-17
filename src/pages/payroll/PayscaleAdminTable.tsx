@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import axiosInstance from '../../api/axios';
 import { getAllEmployees } from '../../api/payroll';
+import LoadingButton from '../../components/LoadingButton';
 
 interface Employee {
   id: number;
@@ -228,9 +229,14 @@ const PayscaleAdminTable: React.FC = () => {
               </div>
               <div className="flex justify-end space-x-2">
                 <button type="button" onClick={() => { setEditPayscale(null); setAddEmployee(null); }} className="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded" disabled={loading}>
+                <LoadingButton
+                  type="submit"
+                  loading={loading}
+                  loadingText="Saving..."
+                  className="px-4 py-2 bg-indigo-600 text-white rounded disabled:opacity-60"
+                >
                   Save
-                </button>
+                </LoadingButton>
               </div>
             </form>
           </div>

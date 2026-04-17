@@ -32,6 +32,7 @@ import {
 import api from "../api/axios";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
+import LoadingButton from "../components/LoadingButton";
 import useOrganizationMenuSettings from "../hooks/useOrganizationMenuSettings";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -2757,14 +2758,15 @@ export default function Dashboard() {
                 placeholder="Write announcement..."
                 maxLength={4000}
               />
-              <button
+              <LoadingButton
                 type="submit"
-                disabled={announcementBusy}
-                className="inline-flex items-center rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
+                loading={announcementBusy}
+                loadingText="Posting..."
+                className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
+                leadingIcon={<Send className="mr-1 h-3.5 w-3.5" />}
               >
-                <Send className="mr-1 h-3.5 w-3.5" />
-                {announcementBusy ? "Posting..." : "Post"}
-              </button>
+                Post
+              </LoadingButton>
             </form>
             {announcementFeedback && (
               <p className={`mt-2 rounded-lg border px-2.5 py-2 text-[11px] ${

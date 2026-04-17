@@ -432,6 +432,7 @@ import ExperienceForm from '../Employee/ExperienceForm';
 import SkillsInterestsForm from '../Employee/SkillsInterestsForm';
 import FamilyDetailsForm from '../Employee/FamilyDetailsForm';
 import MedicalRecordsForm from '../Employee/MedicalRecordsForm';
+import LoadingButton from '../../components/LoadingButton';
 import employeeService from './employee.service';
 
 type TabId = 'personal' | 'education' | 'experience' | 'skills' | 'family' | 'medical';
@@ -845,13 +846,14 @@ const UpdateEmployee: React.FC = () => {
           >
             Cancel
           </button>
-          <button
+          <LoadingButton
             type="submit"
-            disabled={loading}
+            loading={loading}
+            loadingText="Updating Employee info..."
             className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60"
           >
-            {loading ? 'Updating Employee info...' : 'Update'}
-          </button>
+            Update
+          </LoadingButton>
         </div>
       </form>
     </div>

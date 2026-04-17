@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, MapPin, Users, Clock, Building2, IndianRupee } from 'lucide-react';
 import api from '../../api/axios';
+import LoadingButton from '../../components/LoadingButton';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL_LOCAL;
 
@@ -32,6 +33,7 @@ export default function PostJob() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     try {
       setSubmitting(true);
       const response = await api.post('/api/recruitment-details', formData);
@@ -39,6 +41,8 @@ export default function PostJob() {
     } catch (error) {
       console.error('Error posting job:', error);
       // You might want to show an error message to the user here
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -241,13 +245,19 @@ export default function PostJob() {
           <button
             type="button"
             onClick={() => navigate('/recruitment')}
+            disabled={submitting}
             className="btn-secondary"
           >
             Cancel
           </button>
-          <button type="submit" className="btn-primary">
+          <LoadingButton
+            type="submit"
+            loading={submitting}
+            loadingText="Posting..."
+            className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+          >
             Post Job
-          </button>
+          </LoadingButton>
         </div>
       </form>
     </div>

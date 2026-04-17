@@ -4,10 +4,12 @@ import { Calendar, FileText, Trash2, MapPin, Briefcase } from "react-feather";
 import { Plane } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext"; // Import the useAuth hook
 import api from "../../api/axios";
+import LoadingButton from "../../components/LoadingButton";
 
 export default function NewTripRequest() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth(); // Use the useAuth hook to get the user and authentication status
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     destination: "",
@@ -51,12 +53,14 @@ export default function NewTripRequest() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!isAuthenticated || !user) {
       return;
     }
 
     try {
+      setIsSubmitting(true);
       const formDataToSend = new FormData();
 
       const travelRequestPayload = {
@@ -95,6 +99,8 @@ export default function NewTripRequest() {
       navigate("/travel");
     } catch (error) {
       console.error("Error submitting form:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -360,16 +366,19 @@ export default function NewTripRequest() {
           <button
             type="button"
             onClick={handleCancel}
+            disabled={isSubmitting}
             className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
             Cancel
           </button>
-          <button
+          <LoadingButton
             type="submit"
-            className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+            loading={isSubmitting}
+            loadingText="Submitting..."
+            className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Submit Request
-          </button>
+          </LoadingButton>
         </div>
       </form>
     </div>

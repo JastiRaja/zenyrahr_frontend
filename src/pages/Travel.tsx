@@ -5,7 +5,6 @@ import {
   CreditCard,
   Receipt,
   Plus,
-  MapPin,
   Calendar,
   IndianRupee,
   X,
@@ -333,48 +332,95 @@ export default function Travel() {
         <div className="border-b border-slate-200 p-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Trip Requests</h2>
         </div>
-        <div className="divide-y divide-slate-200/70">
-          {trips.length > 0 ? (
-            trips.map((trip) => (
-              <div
-                key={trip.id}
-                className="p-4 transition-colors duration-200 hover:bg-slate-50"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center">
-                      <MapPin className="h-5 w-5 text-slate-400 mr-2" />
-                      <h3 className="text-lg font-semibold text-slate-900">
-                        {trip.destination}
-                      </h3>
-                      <span className={`ml-3 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusBadgeClass(trip.firstLevelApprovalStatus)}`}>
-                        {trip.firstLevelApprovalStatus || "PENDING"}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-slate-500">{trip.purpose}</p>
-                    <div className="mt-4 flex flex-wrap gap-4">
-                      <div className="flex items-center text-sm text-slate-500">
-                        <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
-                        {trip.startDate} - {trip.endDate}
-                      </div>
-                      <div className="flex items-center text-sm text-slate-500">
-                        <IndianRupee className="flex-shrink-0 mr-1.5 h-4 w-4 text-slate-400" />
-                        Budget: {trip.budget}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => viewTripDetails(trip)}
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    View
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center text-slate-500 py-6">No trips available</div>
-          )}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50/80">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  Destination
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  Purpose
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  Dates
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  Budget
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  First Level Approval
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
+                >
+                  Second Level Approval
+                </th>
+                <th scope="col" className="relative px-6 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200/70 bg-white">
+              {trips.map((trip) => (
+                <tr key={trip.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                    {trip.destination || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-700">
+                    {trip.purpose || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                    {dayjs(trip.startDate).format("MMM D, YYYY")} - {dayjs(trip.endDate).format("MMM D, YYYY")}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                    ₹{trip.budget}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusBadgeClass(trip.firstLevelApprovalStatus)}`}>
+                      {trip.firstLevelApprovalStatus || "PENDING"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusBadgeClass(trip.secondLevelApprovalStatus)}`}>
+                      {trip.secondLevelApprovalStatus || "PENDING"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => viewTripDetails(trip)}
+                      className="text-indigo-600 hover:text-indigo-900"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {trips.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-sm text-slate-500">
+                    No trips available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
       )}
