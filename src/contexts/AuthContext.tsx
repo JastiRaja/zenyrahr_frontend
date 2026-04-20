@@ -105,7 +105,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const hasPermission = (action: string, subject: string) => {
     if (!user) return false;
-    return userHasPermission(getAllPermissions(user.role), action, subject);
+    return userHasPermission(getAllPermissions(user.role, user.organizationId), action, subject);
   };
 
   return (

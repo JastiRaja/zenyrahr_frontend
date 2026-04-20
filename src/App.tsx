@@ -13,8 +13,6 @@ import Dashboard from "./pages/Dashboard";
 import Employees from "./pages/Employees";
 import AddEmployee from "./pages/employees/AddEmployee";
 import SelfService from "./pages/SelfService";
-import Recruitment from "./pages/Recruitment";
-import PostJob from "./pages/recruitment/PostJob";
 import Timesheet from "./pages/Timesheet";
 import SubmitTimesheet from "./pages/timesheet/SubmitTimesheet";
 import MyProjects from "./pages/timesheet/MyProjects";
@@ -36,7 +34,6 @@ import ResetPassword from "./pages/ResetPassword";
 import ForgotPassword from "./pages/ForgotPassword";
 import ProjectManagement from "./admin management/ProjectManagement";
 import UpdateEmployee from "./pages/Employee/UpdateEmployee";
-import ServiceRequest from "./pages/ServiceRequest";
 import AdminLeaveBalances from "./admin management/AdminLeaveBalances";
 import LeavePolicies from "./admin management/LeavePolicies";
 import AdminLeaveRequests from "./admin management/AdminLeaveRequests";
@@ -44,12 +41,6 @@ import LeaveTypeAdd from "./admin management/LeaveTypeAdd";
 import LeaveSummary from "./pages/leave/LeaveSummary";
 import AssignManager from "./admin management/AssignManager";
 import ManageEntities from "./admin management/ManageEntities";
-import AdminServiceRequestList from "./admin management/AdminServiceRequestList";
-import AdminServiceRequestDetail from "./admin management/AdminServiceRequestDetail";
-import JobDetails from './pages/JobDetails';
-import RecruitmentJobDetails from './pages/recruitment/JobDetails';
-import JobOpenings from './pages/JobOpenings';
-import ReferralRequests from './pages/recruitment/ReferralRequests';
 import VerifyOTP from "./pages/VerifyOTP";
 import PayrollLayout from "./pages/payroll/PayrollLayout";
 import Payslips from "./pages/payroll/Payslips";
@@ -256,86 +247,7 @@ export default function App() {
                   </ModuleAccessRoute>
                 }
               />
-              <Route
-                path="/service-request"
-                element={<ServiceRequest />}
-              />{" "}
-              {/* Add the new route */}
-              <Route
-                path="/admin/service-requests"
-                element={<AdminServiceRequestList />}
-              />
-              <Route
-                path="/admin/service-request/:id"
-                element={<AdminServiceRequestDetail />}
-              />
               <Route path="/UpdateEmployee" element={<UpdateEmployee />} />
-              <Route
-                path="recruitment"
-                element={
-                  <ModuleAccessRoute
-                    requiredFlags={["recruitmentEnabled"]}
-                    loadingMessage="Loading recruitment access..."
-                  >
-                    <ProtectedRoute
-                      requiredPermissions={[
-                        { action: "read", subject: "employees" },
-                      ]}
-                    >
-                      <Recruitment />
-                    </ProtectedRoute>
-                  </ModuleAccessRoute>
-                }
-              />
-              <Route
-                path="recruitment/post"
-                element={
-                  <ModuleAccessRoute
-                    requiredFlags={["recruitmentEnabled"]}
-                    loadingMessage="Loading recruitment access..."
-                  >
-                    <RoleBasedRoute allowedRoles={["HR"]}>
-                      <ProtectedRoute
-                        requiredPermissions={[
-                          { action: "manage", subject: "recruitment" },
-                        ]}
-                      >
-                        <PostJob />
-                      </ProtectedRoute>
-                    </RoleBasedRoute>
-                  </ModuleAccessRoute>
-                }
-              />
-              <Route
-                path="recruitment/jobs/:id"
-                element={
-                  <ModuleAccessRoute
-                    requiredFlags={["recruitmentEnabled"]}
-                    loadingMessage="Loading recruitment access..."
-                  >
-                    <ProtectedRoute
-                      requiredPermissions={[
-                        { action: "read", subject: "employees" },
-                      ]}
-                    >
-                      <RecruitmentJobDetails />
-                    </ProtectedRoute>
-                  </ModuleAccessRoute>
-                }
-              />
-              <Route
-                path="recruitment/referrals"
-                element={
-                  <ModuleAccessRoute
-                    requiredFlags={["recruitmentEnabled"]}
-                    loadingMessage="Loading recruitment access..."
-                  >
-                    <ProtectedRoute requiredPermissions={[{ action: "manage", subject: "recruitment" }]}>
-                      <ReferralRequests />
-                    </ProtectedRoute>
-                  </ModuleAccessRoute>
-                }
-              />
               <Route
                 path="timesheet"
                 element={
@@ -509,7 +421,7 @@ export default function App() {
                       requiredFlags={["attendanceEnabled"]}
                       loadingMessage="Loading attendance access..."
                     >
-                      <RoleBasedRoute allowedRoles={["ADMIN", "HR", "ORG_ADMIN"]}>
+                      <RoleBasedRoute allowedRoles={["ZENYRAHR_ADMIN", "HR", "ORG_ADMIN"]}>
                         <AttendanceManagement />
                       </RoleBasedRoute>
                     </ModuleAccessRoute>
@@ -518,7 +430,7 @@ export default function App() {
                 <Route
                   path="payscale"
                   element={
-                    <RoleBasedRoute allowedRoles={["ADMIN", "HR"]}>
+                    <RoleBasedRoute allowedRoles={["ZENYRAHR_ADMIN", "HR"]}>
                       <PayscaleManagement />
                     </RoleBasedRoute>
                   }
@@ -526,7 +438,7 @@ export default function App() {
                 <Route
                   path="approvals"
                   element={
-                    <RoleBasedRoute allowedRoles={["ADMIN", "HR"]}>
+                    <RoleBasedRoute allowedRoles={["ZENYRAHR_ADMIN", "HR"]}>
                       <AdminPayslipManagement />
                     </RoleBasedRoute>
                   }
@@ -535,7 +447,7 @@ export default function App() {
                 {/* <Route
                   path="paygrade"
                   element={
-                    <RoleBasedRoute allowedRoles={["ADMIN", "HR"]}>
+                    <RoleBasedRoute allowedRoles={["ZENYRAHR_ADMIN", "HR"]}>
                       <PayGradeManagement />
                     </RoleBasedRoute>
                   }
@@ -630,35 +542,13 @@ export default function App() {
                 }
               />
               <Route
-                path="/job-openings"
-                element={
-                  <ModuleAccessRoute
-                    requiredFlags={["recruitmentEnabled"]}
-                    loadingMessage="Loading recruitment access..."
-                  >
-                    <JobOpenings />
-                  </ModuleAccessRoute>
-                }
-              />
-              <Route
-                path="/job-openings/:id"
-                element={
-                  <ModuleAccessRoute
-                    requiredFlags={["recruitmentEnabled"]}
-                    loadingMessage="Loading recruitment access..."
-                  >
-                    <JobDetails />
-                  </ModuleAccessRoute>
-                }
-              />
-              <Route
                 path="/admin/holidays"
                 element={
                   <ModuleAccessRoute
                     requiredFlags={["holidayManagementEnabled"]}
                     loadingMessage="Loading holiday management access..."
                   >
-                    <RoleBasedRoute allowedRoles={["HR", "ADMIN"]}>
+                    <RoleBasedRoute allowedRoles={["HR", "ZENYRAHR_ADMIN"]}>
                       <AdminHolidays />
                     </RoleBasedRoute>
                   </ModuleAccessRoute>
@@ -667,7 +557,7 @@ export default function App() {
               <Route
                 path="/admin/organizations"
                 element={
-                  <RoleBasedRoute allowedRoles={["ADMIN"]}>
+                  <RoleBasedRoute allowedRoles={["ZENYRAHR_ADMIN"]}>
                     <Organizations />
                   </RoleBasedRoute>
                 }

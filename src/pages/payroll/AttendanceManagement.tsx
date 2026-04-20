@@ -35,7 +35,7 @@ const AttendanceManagement: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState('');
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [punchDetails, setPunchDetails] = useState<{ [id: number]: PunchDetails }>({});
-  const canManuallyUpdate = ['hr', 'admin', 'org_admin'].includes((user?.role || '').toLowerCase());
+  const canManuallyUpdate = ['hr', 'zenyrahr_admin', 'org_admin'].includes((user?.role || '').toLowerCase());
 
   const getStatusPillClass = (value?: string) => {
     switch ((value || '').toUpperCase()) {

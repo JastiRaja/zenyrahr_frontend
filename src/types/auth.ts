@@ -1,5 +1,17 @@
-export type SystemRole = 'admin' | 'org_admin' | 'hr' | 'manager' | 'employee';
+/** Platform (multi-tenant) operator; not an organization catalog role. */
+export const MAIN_PLATFORM_ADMIN_ROLE = 'zenyrahr_admin' as const;
+
+export type SystemRole =
+  | typeof MAIN_PLATFORM_ADMIN_ROLE
+  | 'org_admin'
+  | 'hr'
+  | 'manager'
+  | 'employee';
 export type Role = SystemRole | (string & {});
+
+export function isMainPlatformAdmin(role: string | undefined | null): boolean {
+  return (role || '').toLowerCase() === MAIN_PLATFORM_ADMIN_ROLE;
+}
  
 // User interface
 export interface User {
@@ -31,7 +43,7 @@ type InheritedPermissions = {
  
 // Define role inheritance
 export const roleInheritance: InheritedPermissions = {
-  admin: [], // Admin doesn't inherit - has all permissions
+  zenyrahr_admin: [], // platform admin — full access via manage/all
   org_admin: ['hr'],
   hr: ['employee'], // HR inherits employee permissions
   manager: ['employee'], // Manager inherits employee permissions
@@ -40,7 +52,7 @@ export const roleInheritance: InheritedPermissions = {
  
 // Define base permissions for each role
 export const rolePermissions: Record<SystemRole, Permission[]> = {
-  admin: [
+  zenyrahr_admin: [
     { action: 'manage', subject: 'all' }
   ],
   org_admin: [
@@ -59,7 +71,6 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     { action: 'manage', subject: 'employees' },
     { action: 'manage', subject: 'projects' },
     { action: 'manage', subject: 'leave-balance' },
-    { action: 'manage', subject: 'recruitment' },
     { action: 'manage', subject: 'leave' },
     { action: 'manage', subject: 'performance' },
     { action: 'approve', subject: 'leave' },
@@ -68,7 +79,6 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
   ],
   manager: [
     { action: 'read', subject: 'employees' },
-    { action: 'manage', subject: 'recruitment' },
     { action: 'read', subject: 'performance' },
     { action: 'read', subject: 'analytics' },
     { action: 'approve', subject: 'timesheet' },
@@ -81,23 +91,30 @@ export const rolePermissions: Record<SystemRole, Permission[]> = {
     { action: 'submit', subject: 'timesheet' },
     { action: 'read', subject: 'learning' },
     { action: 'submit', subject: 'expenses' },
-    { action: 'manage', subject: 'recruitment' },
     { action: 'manage', subject: 'performance' },
   ]
 };
  
 // Helper function to get all permissions for a role including inherited ones
-export function resolvePermissionRole(role: string): SystemRole {
-  const normalized = (role || '').toLowerCase() as SystemRole;
+/**
+ * Maps JWT/database role to a permission template.
+ * Legacy platform accounts used role {@code admin} with no organization; org-scoped {@code admin} is a catalog role only.
+ */
+export function resolvePermissionRole(role: string, organizationId?: number | null): SystemRole {
+  const normalized = (role || '').toLowerCase();
+  const noOrganization = organizationId === null || organizationId === undefined;
+  if (normalized === "admin" && noOrganization) {
+    return MAIN_PLATFORM_ADMIN_ROLE;
+  }
   if (Object.prototype.hasOwnProperty.call(rolePermissions, normalized)) {
-    return normalized;
+    return normalized as SystemRole;
   }
   // Custom roles default to employee-level permissions unless extended later.
-  return 'employee';
+  return "employee";
 }
 
-export function getAllPermissions(role: Role): Permission[] {
-  const resolvedRole = resolvePermissionRole(role);
+export function getAllPermissions(role: Role, organizationId?: number | null): Permission[] {
+  const resolvedRole = resolvePermissionRole(String(role), organizationId);
   const inheritedRoles = roleInheritance[resolvedRole];
   const inheritedPermissions = inheritedRoles.flatMap(r => rolePermissions[r]);
   return [...rolePermissions[resolvedRole], ...inheritedPermissions];

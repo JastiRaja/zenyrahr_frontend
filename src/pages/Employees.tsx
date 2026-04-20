@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { Search, Plus, Filter, MapPin, Users, X, Trash2, Download } from "lucide-react";
+import { isMainPlatformAdmin, MAIN_PLATFORM_ADMIN_ROLE } from "../types/auth";
+import { Search, Plus, Filter, MapPin, Users, X, Trash2, Download, History, Briefcase, ChevronDown } from "lucide-react";
 import CommonDialog from "../components/CommonDialog";
 import api from "../api/axios";
 
@@ -41,6 +42,40 @@ interface Filters {
 }
 
 type EmployeeStatusAction = "deactivate" | "reactivate";
+type JobChangeType = "PROMOTION" | "ROLE_CHANGE" | "TRANSFER" | "JOB_UPDATE";
+
+interface JobChangeFormState {
+  changeType: JobChangeType;
+  role: string;
+  position: string;
+  department: string;
+  workLocation: string;
+  managerId: string;
+  clearManager: boolean;
+  effectiveDate: string;
+  reason: string;
+}
+
+interface EmployeeJobHistory {
+  id: number;
+  employeeId: number;
+  employeeName: string;
+  changedByName: string;
+  changeType: string;
+  oldRole: string | null;
+  newRole: string | null;
+  oldPosition: string | null;
+  newPosition: string | null;
+  oldDepartment: string | null;
+  newDepartment: string | null;
+  oldWorkLocation: string | null;
+  newWorkLocation: string | null;
+  oldManagerName: string | null;
+  newManagerName: string | null;
+  effectiveDate: string | null;
+  reason: string | null;
+  changedAt: string;
+}
 
 function formatPunchTime(iso: string | null | undefined) {
   if (!iso || typeof iso !== "string") return "—";
@@ -75,6 +110,35 @@ export default function Employees() {
     message: "",
     tone: "success",
   });
+  const [jobChangeDialog, setJobChangeDialog] = useState<{
+    isOpen: boolean;
+    employee: Employee | null;
+  }>({
+    isOpen: false,
+    employee: null,
+  });
+  const [jobHistoryDialog, setJobHistoryDialog] = useState<{
+    isOpen: boolean;
+    employee: Employee | null;
+  }>({
+    isOpen: false,
+    employee: null,
+  });
+  const [jobChangeForm, setJobChangeForm] = useState<JobChangeFormState>({
+    changeType: "JOB_UPDATE",
+    role: "",
+    position: "",
+    department: "",
+    workLocation: "",
+    managerId: "",
+    clearManager: false,
+    effectiveDate: new Date().toISOString().slice(0, 10),
+    reason: "",
+  });
+  const [jobHistory, setJobHistory] = useState<EmployeeJobHistory[]>([]);
+  const [isJobChangeSubmitting, setIsJobChangeSubmitting] = useState(false);
+  const [isJobHistoryLoading, setIsJobHistoryLoading] = useState(false);
+  const [activeActionMenuId, setActiveActionMenuId] = useState<number | null>(null);
   const [filters, setFilters] = useState<Filters>({
     department: "All",
     position: "All",
@@ -89,7 +153,7 @@ export default function Employees() {
 
   const navigate = useNavigate();
   const currentUserRole = user?.role?.toLowerCase() || "";
-  const isCurrentUserAdmin = currentUserRole === "admin";
+  const isCurrentUserAdmin = isMainPlatformAdmin(user?.role);
   const isCurrentUserHr = currentUserRole === "hr";
   const isCurrentUserManager = currentUserRole === "manager";
   const canAddEmployee = hasPermission("manage", "employees");
@@ -100,10 +164,22 @@ export default function Employees() {
     const targetRole = employee.role?.toLowerCase?.() || "";
 
     // HR cannot manage admin or org admin accounts.
-    if (isCurrentUserHr && (targetRole === "admin" || targetRole === "org_admin")) return false;
+    if (isCurrentUserHr && (targetRole === MAIN_PLATFORM_ADMIN_ROLE || targetRole === "org_admin"))
+      return false;
 
     // Prevent self deactivation/reactivation actions from this screen.
     if (user?.id && employee.id === Number(user.id)) return false;
+
+    return true;
+  };
+
+  const canManageJobChanges = (employee: Employee) => {
+    if (!canAddEmployee) return false;
+    const targetRole = employee.role?.toLowerCase?.() || "";
+
+    if (isCurrentUserHr && (targetRole === MAIN_PLATFORM_ADMIN_ROLE || targetRole === "org_admin")) {
+      return false;
+    }
 
     return true;
   };
@@ -225,6 +301,7 @@ export default function Employees() {
 
   const handleDeactivateEmployee = (employee: Employee) => {
     if (!canManageEmployeeStatus(employee)) return;
+    setActiveActionMenuId(null);
     setConfirmDialog({
       isOpen: true,
       employee,
@@ -234,6 +311,7 @@ export default function Employees() {
 
   const handleReactivateEmployee = (employee: Employee) => {
     if (!canManageEmployeeStatus(employee)) return;
+    setActiveActionMenuId(null);
 
     setConfirmDialog({
       isOpen: true,
@@ -368,6 +446,124 @@ export default function Employees() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  const openJobChangeDialog = (employee: Employee) => {
+    if (!canManageJobChanges(employee)) return;
+    setActiveActionMenuId(null);
+    setJobChangeForm({
+      changeType: "JOB_UPDATE",
+      role: employee.role ?? "",
+      position: employee.position ?? "",
+      department: employee.department ?? "",
+      workLocation: employee.workLocation ?? "",
+      managerId: "",
+      clearManager: false,
+      effectiveDate: new Date().toISOString().slice(0, 10),
+      reason: "",
+    });
+    setJobChangeDialog({
+      isOpen: true,
+      employee,
+    });
+  };
+
+  const closeJobChangeDialog = () => {
+    setJobChangeDialog({ isOpen: false, employee: null });
+    setIsJobChangeSubmitting(false);
+  };
+
+  const handleSubmitJobChange = async () => {
+    if (!jobChangeDialog.employee) return;
+    setIsJobChangeSubmitting(true);
+    try {
+      const payload = {
+        changeType: jobChangeForm.changeType,
+        role: jobChangeForm.role.trim() || undefined,
+        position: jobChangeForm.position.trim() || undefined,
+        department: jobChangeForm.department.trim() || undefined,
+        workLocation: jobChangeForm.workLocation.trim() || undefined,
+        managerId:
+          !jobChangeForm.clearManager && jobChangeForm.managerId.trim()
+            ? Number(jobChangeForm.managerId.trim())
+            : undefined,
+        clearManager: jobChangeForm.clearManager,
+        effectiveDate: jobChangeForm.effectiveDate || undefined,
+        reason: jobChangeForm.reason.trim() || undefined,
+      };
+
+      await api.post(`/auth/employees/${jobChangeDialog.employee.id}/job-change`, payload);
+
+      setEmployees((prev) =>
+        prev.map((item) =>
+          item.id === jobChangeDialog.employee?.id
+            ? {
+                ...item,
+                role: jobChangeForm.role.trim() || item.role,
+                position: jobChangeForm.position.trim() || item.position,
+                department: jobChangeForm.department.trim() || item.department,
+                workLocation: jobChangeForm.workLocation.trim() || item.workLocation,
+              }
+            : item
+        )
+      );
+
+      setMessageDialog({
+        isOpen: true,
+        title: "Job Details Updated",
+        message: `Job change for ${jobChangeDialog.employee.firstName} ${jobChangeDialog.employee.lastName} was saved successfully.`,
+        tone: "success",
+      });
+      closeJobChangeDialog();
+    } catch (error) {
+      console.error("Error applying job change:", error);
+      setMessageDialog({
+        isOpen: true,
+        title: "Job Change Failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to apply job change. Please verify fields and try again.",
+        tone: "error",
+      });
+      setIsJobChangeSubmitting(false);
+    }
+  };
+
+  const openJobHistoryDialog = async (employee: Employee) => {
+    setActiveActionMenuId(null);
+    setJobHistoryDialog({
+      isOpen: true,
+      employee,
+    });
+    setIsJobHistoryLoading(true);
+    try {
+      const response = await api.get<EmployeeJobHistory[]>(
+        `/auth/employees/${employee.id}/job-history`
+      );
+      setJobHistory(response.data);
+    } catch (error) {
+      console.error("Error fetching employee job history:", error);
+      setJobHistory([]);
+      setMessageDialog({
+        isOpen: true,
+        title: "Unable to Load History",
+        message: "Could not fetch job history for this employee.",
+        tone: "error",
+      });
+    } finally {
+      setIsJobHistoryLoading(false);
+    }
+  };
+
+  const closeJobHistoryDialog = () => {
+    setJobHistoryDialog({ isOpen: false, employee: null });
+    setJobHistory([]);
+    setIsJobHistoryLoading(false);
+  };
+  const managerOptions = employees.filter((e) => {
+    if (jobChangeDialog.employee && e.id === jobChangeDialog.employee.id) return false;
+    return e.role?.toLowerCase() === "manager";
+  });
 
   const totalEmployees = employees.length;
   const activeEmployees = employees.filter((employee) => employee.active).length;
@@ -661,9 +857,9 @@ export default function Employees() {
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="max-h-[65vh] overflow-auto">
           <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-100">
+            <thead className="sticky top-0 z-10 bg-slate-100">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">
                   Employee
@@ -763,36 +959,71 @@ export default function Employees() {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-3">
+                      <div className="relative inline-block text-left">
                         <button
-                          onClick={() => navigate(`/selfservice/${employee.id}`)}
-                          className="text-sky-700 hover:text-sky-900"
+                          onClick={() =>
+                            setActiveActionMenuId((prev) =>
+                              prev === employee.id ? null : employee.id
+                            )
+                          }
+                          className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
                         >
-                          View
+                          Actions
+                          <ChevronDown className="ml-1 h-4 w-4" />
                         </button>
-                        {canManageEmployeeStatus(employee) &&
-                          (employee.active === false ? (
+
+                        {activeActionMenuId === employee.id && (
+                          <div className="absolute right-0 z-20 mt-2 w-44 rounded-md border border-slate-200 bg-white py-1 shadow-lg">
                             <button
-                              onClick={() => handleReactivateEmployee(employee)}
-                              disabled={reactivatingEmployeeId === employee.id}
-                              className="inline-flex items-center text-emerald-600 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                              onClick={() => {
+                                setActiveActionMenuId(null);
+                                navigate(`/selfservice/${employee.id}`);
+                              }}
+                              className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                             >
-                              {reactivatingEmployeeId === employee.id
-                                ? "Reactivating..."
-                                : "Reactivate"}
+                              View
                             </button>
-                          ) : (
                             <button
-                              onClick={() => handleDeactivateEmployee(employee)}
-                              disabled={deactivatingEmployeeId === employee.id}
-                              className="inline-flex items-center text-rose-600 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
+                              onClick={() => openJobHistoryDialog(employee)}
+                              className="flex w-full items-center px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                             >
-                              <Trash2 className="mr-1 h-4 w-4" />
-                              {deactivatingEmployeeId === employee.id
-                                ? "Deactivating..."
-                                : "Deactivate"}
+                              <History className="mr-2 h-4 w-4" />
+                              History
                             </button>
-                          ))}
+                            {canManageJobChanges(employee) && (
+                              <button
+                                onClick={() => openJobChangeDialog(employee)}
+                                className="flex w-full items-center px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                <Briefcase className="mr-2 h-4 w-4" />
+                                Job Change
+                              </button>
+                            )}
+                            {canManageEmployeeStatus(employee) &&
+                              (employee.active === false ? (
+                                <button
+                                  onClick={() => handleReactivateEmployee(employee)}
+                                  disabled={reactivatingEmployeeId === employee.id}
+                                  className="block w-full px-3 py-2 text-left text-sm text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {reactivatingEmployeeId === employee.id
+                                    ? "Reactivating..."
+                                    : "Reactivate"}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleDeactivateEmployee(employee)}
+                                  disabled={deactivatingEmployeeId === employee.id}
+                                  className="flex w-full items-center px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  {deactivatingEmployeeId === employee.id
+                                    ? "Deactivating..."
+                                    : "Deactivate"}
+                                </button>
+                              ))}
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -820,6 +1051,326 @@ export default function Employees() {
           </table>
         </div>
       </section>
+
+      {jobChangeDialog.isOpen && jobChangeDialog.employee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-3xl rounded-md border border-slate-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Apply Job Change</h3>
+                <p className="text-xs text-slate-500">
+                  {jobChangeDialog.employee.firstName} {jobChangeDialog.employee.lastName}
+                </p>
+              </div>
+              <button
+                onClick={closeJobChangeDialog}
+                className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                disabled={isJobChangeSubmitting}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-4 px-5 py-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                  Change Type
+                </label>
+                <select
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                  value={jobChangeForm.changeType}
+                  onChange={(e) =>
+                    setJobChangeForm((prev) => ({
+                      ...prev,
+                      changeType: e.target.value as JobChangeType,
+                    }))
+                  }
+                >
+                  <option value="JOB_UPDATE">Job Update</option>
+                  <option value="PROMOTION">Promotion</option>
+                  <option value="ROLE_CHANGE">Role Change</option>
+                  <option value="TRANSFER">Transfer</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                  Effective Date
+                </label>
+                <input
+                  type="date"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700"
+                  value={jobChangeForm.effectiveDate}
+                  onChange={(e) =>
+                    setJobChangeForm((prev) => ({
+                      ...prev,
+                      effectiveDate: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Role</label>
+                <select
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700"
+                  value={jobChangeForm.role}
+                  onChange={(e) =>
+                    setJobChangeForm((prev) => ({
+                      ...prev,
+                      role: e.target.value,
+                    }))
+                  }
+                >
+                  {jobChangeForm.role &&
+                    !uniqueRoles.includes(jobChangeForm.role) && (
+                      <option value={jobChangeForm.role}>{jobChangeForm.role}</option>
+                    )}
+                  {uniqueRoles
+                    .filter((role) => role && role !== "All")
+                    .map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Position</label>
+                <select
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700"
+                  value={jobChangeForm.position}
+                  onChange={(e) =>
+                    setJobChangeForm((prev) => ({
+                      ...prev,
+                      position: e.target.value,
+                    }))
+                  }
+                >
+                  {jobChangeForm.position &&
+                    !uniquePositions.includes(jobChangeForm.position) && (
+                      <option value={jobChangeForm.position}>{jobChangeForm.position}</option>
+                    )}
+                  {uniquePositions
+                    .filter((position) => position && position !== "All")
+                    .map((position) => (
+                      <option key={position} value={position}>
+                        {position}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                  Department
+                </label>
+                <select
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700"
+                  value={jobChangeForm.department}
+                  onChange={(e) =>
+                    setJobChangeForm((prev) => ({
+                      ...prev,
+                      department: e.target.value,
+                    }))
+                  }
+                >
+                  {jobChangeForm.department &&
+                    !uniqueDepartments.includes(jobChangeForm.department) && (
+                      <option value={jobChangeForm.department}>{jobChangeForm.department}</option>
+                    )}
+                  {uniqueDepartments
+                    .filter((department) => department && department !== "All")
+                    .map((department) => (
+                      <option key={department} value={department}>
+                        {department}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                  Work Location
+                </label>
+                <select
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700"
+                  value={jobChangeForm.workLocation}
+                  onChange={(e) =>
+                    setJobChangeForm((prev) => ({
+                      ...prev,
+                      workLocation: e.target.value,
+                    }))
+                  }
+                >
+                  {jobChangeForm.workLocation &&
+                    !uniqueLocations.includes(jobChangeForm.workLocation) && (
+                      <option value={jobChangeForm.workLocation}>{jobChangeForm.workLocation}</option>
+                    )}
+                  {uniqueLocations
+                    .filter((location) => location && location !== "All")
+                    .map((location) => (
+                      <option key={location} value={location}>
+                        {location}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-xs font-semibold uppercase text-slate-500">
+                    Reporting Manager
+                  </label>
+                  <label className="inline-flex items-center gap-2 text-xs text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={jobChangeForm.clearManager}
+                      onChange={(e) =>
+                        setJobChangeForm((prev) => ({
+                          ...prev,
+                          clearManager: e.target.checked,
+                          managerId: e.target.checked ? "" : prev.managerId,
+                        }))
+                      }
+                    />
+                    Clear manager assignment
+                  </label>
+                </div>
+                <select
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                  value={jobChangeForm.managerId}
+                  disabled={jobChangeForm.clearManager}
+                  onChange={(e) =>
+                    setJobChangeForm((prev) => ({
+                      ...prev,
+                      managerId: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Keep current manager</option>
+                  {managerOptions.map((manager) => (
+                    <option key={manager.id} value={manager.id}>
+                      {manager.firstName} {manager.lastName} ({manager.code || `EMP-${manager.id}`})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">
+                  Reason
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700"
+                  placeholder="Optional reason for this change..."
+                  value={jobChangeForm.reason}
+                  onChange={(e) =>
+                    setJobChangeForm((prev) => ({
+                      ...prev,
+                      reason: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
+              <button
+                onClick={closeJobChangeDialog}
+                disabled={isJobChangeSubmitting}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitJobChange}
+                disabled={isJobChangeSubmitting}
+                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isJobChangeSubmitting ? "Saving..." : "Save Job Change"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {jobHistoryDialog.isOpen && jobHistoryDialog.employee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-4xl rounded-md border border-slate-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Job History</h3>
+                <p className="text-xs text-slate-500">
+                  {jobHistoryDialog.employee.firstName} {jobHistoryDialog.employee.lastName}
+                </p>
+              </div>
+              <button
+                onClick={closeJobHistoryDialog}
+                className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-auto px-5 py-4">
+              {isJobHistoryLoading ? (
+                <p className="text-sm text-slate-500">Loading history...</p>
+              ) : jobHistory.length === 0 ? (
+                <p className="text-sm text-slate-500">No job change history available yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {jobHistory.map((entry) => (
+                    <div key={entry.id} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                          {entry.changeType}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {entry.effectiveDate
+                            ? `Effective ${new Date(entry.effectiveDate).toLocaleDateString()}`
+                            : "Effective date not set"}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500">
+                        Changed by {entry.changedByName} on{" "}
+                        {entry.changedAt ? new Date(entry.changedAt).toLocaleString() : "—"}
+                      </p>
+                      <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-slate-700 md:grid-cols-2">
+                        <p>
+                          <span className="font-semibold">Role:</span>{" "}
+                          {entry.oldRole || "—"} {"->"} {entry.newRole || "—"}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Position:</span>{" "}
+                          {entry.oldPosition || "—"} {"->"} {entry.newPosition || "—"}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Department:</span>{" "}
+                          {entry.oldDepartment || "—"} {"->"} {entry.newDepartment || "—"}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Location:</span>{" "}
+                          {entry.oldWorkLocation || "—"} {"->"} {entry.newWorkLocation || "—"}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Manager:</span>{" "}
+                          {entry.oldManagerName || "—"} {"->"} {entry.newManagerName || "—"}
+                        </p>
+                      </div>
+                      {entry.reason && (
+                        <p className="mt-2 text-xs text-slate-700">
+                          <span className="font-semibold">Reason:</span> {entry.reason}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end border-t border-slate-200 px-5 py-4">
+              <button
+                onClick={closeJobHistoryDialog}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CommonDialog
         isOpen={confirmDialog.isOpen && Boolean(confirmDialog.employee) && Boolean(confirmDialog.action)}

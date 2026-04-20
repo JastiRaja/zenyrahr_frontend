@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import axiosInstance from '../../api/axios';
 import { getAllEmployees } from '../../api/payroll';
 import LoadingButton from '../../components/LoadingButton';
+import { useOrganizationScope } from '../../hooks/useOrganizationScope';
 
 interface Employee {
   id: number;
@@ -23,6 +24,12 @@ interface Payscale {
 }
 
 const PayscaleAdminTable: React.FC = () => {
+  const {
+    organizationId,
+    setSelectedOrganizationId,
+    organizations,
+    needsOrganizationSelection,
+  } = useOrganizationScope();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [payscales, setPayscales] = useState<Payscale[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,15 +46,23 @@ const PayscaleAdminTable: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (organizationId == null) {
+      setEmployees([]);
+      setPayscales([]);
+      return;
+    }
     fetchAll();
-  }, []);
+  }, [organizationId]);
 
   const fetchAll = async () => {
+    if (organizationId == null) {
+      return;
+    }
     setLoading(true);
     try {
       const [empData, payscaleRes] = await Promise.all([
         getAllEmployees(),
-        axiosInstance.get('/api/payscale')
+        axiosInstance.get('/api/payscale', { params: { organizationId } }),
       ]);
       setEmployees(empData);
       setPayscales(payscaleRes.data);
@@ -131,6 +146,26 @@ const PayscaleAdminTable: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Employee Payscales</h1>
+      {needsOrganizationSelection && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-slate-600">Organization</span>
+          <select
+            className="rounded border border-slate-300 px-2 py-1 text-sm min-w-[220px]"
+            value={organizationId ?? ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSelectedOrganizationId(v === '' ? null : Number(v));
+            }}
+          >
+            <option value="">Select organization</option>
+            {organizations.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       {error && <div className="text-red-600 mb-4">{error}</div>}
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">

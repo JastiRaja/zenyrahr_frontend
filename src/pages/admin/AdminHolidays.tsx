@@ -5,6 +5,7 @@ import CommonDialog from "../../components/CommonDialog";
 import LoadingButton from "../../components/LoadingButton";
 import api from "../../api/axios";
 import { useAuth } from "../../contexts/AuthContext";
+import { isMainPlatformAdmin } from "../../types/auth";
 
 type OrganizationOption = {
   id: number;
@@ -13,7 +14,7 @@ type OrganizationOption = {
 
 export default function AdminHolidays() {
   const { user } = useAuth();
-  const isMainAdmin = (user?.role || "").toLowerCase() === "admin";
+  const isMainAdmin = isMainPlatformAdmin(user?.role);
   const parsedOrgId = user?.organizationId ? Number(user.organizationId) : NaN;
   const initialOrgId = Number.isFinite(parsedOrgId) ? parsedOrgId : "";
   const [year, setYear] = useState(new Date().getFullYear());

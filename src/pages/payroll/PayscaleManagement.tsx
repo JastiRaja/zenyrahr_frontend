@@ -10,10 +10,12 @@ import {
   message,
   Space,
   Popconfirm,
+  Divider,
 } from 'antd';
 import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
+import { useOrganizationScope } from '../../hooks/useOrganizationScope';
 
 const { Option } = Select;
 
@@ -45,18 +47,41 @@ const PayscaleManagement: React.FC = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuth();
+  const {
+    organizationId,
+    setSelectedOrganizationId,
+    organizations,
+    needsOrganizationSelection,
+  } = useOrganizationScope();
   const watchedEmployeeId = Form.useWatch('employeeId', form);
   const watchedCtc = Form.useWatch('ctc', form);
+  const watchedBasicSalary = Form.useWatch('basicSalary', form);
+  const watchedHra = Form.useWatch('hra', form);
+  const watchedDa = Form.useWatch('da', form);
+  const watchedAllowance = Form.useWatch('allowance', form);
+  const watchedMedicalAllowance = Form.useWatch('medicalAllowance', form);
+  const watchedPfContribution = Form.useWatch('pfContribution', form);
+  const watchedProfessionalTax = Form.useWatch('professionalTax', form);
+  const watchedHealthInsurance = Form.useWatch('healthInsurance', form);
 
   useEffect(() => {
+    if (organizationId == null) {
+      setPayscales([]);
+      return;
+    }
     fetchPayscales();
     fetchEmployees();
-  }, []);
+  }, [organizationId]);
 
   const fetchPayscales = async () => {
+    if (organizationId == null) {
+      return;
+    }
     try {
       setLoading(true);
-      const response = await api.get(`/api/payscale`);
+      const response = await api.get(`/api/payscale`, {
+        params: { organizationId },
+      });
       setPayscales(Array.isArray(response.data) ? response.data.filter(ps => ps.employee) : []);
     } catch (error) {
       message.error('Failed to fetch payscales');
@@ -145,6 +170,18 @@ const PayscaleManagement: React.FC = () => {
       : '';
   const moneyParser = (value?: string) => (value ? value.replace(/[^\d.-]/g, '') : '');
   const selectedEmployee = employees.find((emp) => emp.id === watchedEmployeeId);
+  const toAmount = (value: unknown) => Number(value || 0);
+  const totalEarningsPreview =
+    toAmount(watchedBasicSalary) +
+    toAmount(watchedHra) +
+    toAmount(watchedDa) +
+    toAmount(watchedAllowance) +
+    toAmount(watchedMedicalAllowance);
+  const totalDeductionsPreview =
+    toAmount(watchedPfContribution) +
+    toAmount(watchedProfessionalTax) +
+    toAmount(watchedHealthInsurance);
+  const estimatedNetPreview = totalEarningsPreview - totalDeductionsPreview;
 
   const columns = [
     {
@@ -229,10 +266,27 @@ const PayscaleManagement: React.FC = () => {
                 Manage monthly compensation structures for employees.
               </p>
             </div>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAdd}
+              disabled={organizationId == null}
+            >
               Add Payscale
             </Button>
           </div>
+          {needsOrganizationSelection && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-sky-50">
+              <span>Organization</span>
+              <Select
+                className="min-w-[220px]"
+                placeholder="Select organization"
+                value={organizationId ?? undefined}
+                onChange={(v) => setSelectedOrganizationId(v)}
+                options={organizations.map((o) => ({ label: o.name, value: o.id }))}
+              />
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
           <div className="px-4 py-3">
@@ -289,11 +343,11 @@ const PayscaleManagement: React.FC = () => {
           form.resetFields();
         }}
         footer={null}
-        width={980}
+        width={1040}
         centered
-        destroyOnClose
+        destroyOnHidden
       >
-        <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3">
+        <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3 lg:grid-cols-6">
           <div>
             <p className="text-xs uppercase text-slate-500">Employee</p>
             <p className="text-sm font-semibold text-slate-900">
@@ -308,6 +362,18 @@ const PayscaleManagement: React.FC = () => {
             <p className="text-xs uppercase text-slate-500">Mode</p>
             <p className="text-sm font-semibold text-slate-900">{editingId ? 'Update' : 'Create'}</p>
           </div>
+          <div>
+            <p className="text-xs uppercase text-slate-500">Earnings</p>
+            <p className="text-sm font-semibold text-emerald-700">{formatCurrency(totalEarningsPreview)}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase text-slate-500">Deductions</p>
+            <p className="text-sm font-semibold text-rose-700">{formatCurrency(totalDeductionsPreview)}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase text-slate-500">Est. Net</p>
+            <p className="text-sm font-semibold text-indigo-700">{formatCurrency(estimatedNetPreview)}</p>
+          </div>
         </div>
 
         <Form
@@ -319,7 +385,12 @@ const PayscaleManagement: React.FC = () => {
         >
           <div className="max-h-[62vh] space-y-4 overflow-y-auto pr-1">
             <section className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Employee & CTC</p>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Employee & CTC</p>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                  Step 1
+                </span>
+              </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Form.Item
                   name="employeeId"
@@ -340,7 +411,7 @@ const PayscaleManagement: React.FC = () => {
 
                 <Form.Item
                   name="ctc"
-                  label="CTC (Monthly)"
+                  label="CTC (Monthly, Auto-calculated)"
                   rules={[{ required: true, message: 'CTC is required' }]}
                   className="sm:col-span-2"
                 >
@@ -357,8 +428,13 @@ const PayscaleManagement: React.FC = () => {
             </section>
 
             <section className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Monthly Earnings</p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Monthly Earnings</p>
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                  Step 2
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <Form.Item
                   name="basicSalary"
                   label="Basic Salary"
@@ -423,7 +499,7 @@ const PayscaleManagement: React.FC = () => {
                   name="medicalAllowance"
                   label="Medical Allowance"
                   rules={[{ required: true, message: 'Enter medical allowance amount' }]}
-                  className="sm:col-span-2"
+                  className="md:col-span-3"
                 >
                   <InputNumber
                     min={0}
@@ -438,8 +514,13 @@ const PayscaleManagement: React.FC = () => {
             </section>
 
             <section className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Deductions & Benefits</p>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Deductions & Benefits</p>
+                <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
+                  Step 3
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <Form.Item
                   name="pfContribution"
                   label="PF Contribution"
@@ -474,7 +555,7 @@ const PayscaleManagement: React.FC = () => {
                   name="healthInsurance"
                   label="Health Insurance"
                   rules={[{ required: true, message: 'Enter health insurance amount' }]}
-                  className="sm:col-span-2"
+                  className="md:col-span-3"
                 >
                   <InputNumber
                     min={0}
@@ -489,7 +570,12 @@ const PayscaleManagement: React.FC = () => {
             </section>
 
             <section className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Effective Dates</p>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Effective Dates</p>
+                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
+                  Step 4
+                </span>
+              </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Form.Item
                   name="effectiveFrom"
@@ -507,9 +593,30 @@ const PayscaleManagement: React.FC = () => {
                 </Form.Item>
               </div>
             </section>
+
+            <section className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                Compensation Summary
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-md bg-white p-3">
+                  <p className="text-xs uppercase text-slate-500">Total Earnings</p>
+                  <p className="text-sm font-semibold text-emerald-700">{formatCurrency(totalEarningsPreview)}</p>
+                </div>
+                <div className="rounded-md bg-white p-3">
+                  <p className="text-xs uppercase text-slate-500">Total Deductions</p>
+                  <p className="text-sm font-semibold text-rose-700">{formatCurrency(totalDeductionsPreview)}</p>
+                </div>
+                <div className="rounded-md bg-white p-3">
+                  <p className="text-xs uppercase text-slate-500">Estimated Net Salary</p>
+                  <p className="text-sm font-semibold text-indigo-700">{formatCurrency(estimatedNetPreview)}</p>
+                </div>
+              </div>
+            </section>
           </div>
 
-          <Form.Item className="mb-0 mt-4 border-t border-slate-200 pt-3">
+          <Divider className="my-4" />
+          <Form.Item className="mb-0">
             <Space className="w-full justify-end">
               <Button onClick={() => {
                 setModalVisible(false);

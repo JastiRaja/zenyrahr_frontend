@@ -7,7 +7,6 @@ import {
   Calendar,
   IndianRupee,
   Plane,
-  UserPlus,
   LogOut,
   Menu,
   X,
@@ -20,6 +19,7 @@ import api from "../api/axios";
 import useOrganizationMenuSettings, {
   type OrganizationMenuSettings,
 } from "../hooks/useOrganizationMenuSettings";
+import { isMainPlatformAdmin, MAIN_PLATFORM_ADMIN_ROLE } from "../types/auth";
 
 type AppUser = {
   role?: string;
@@ -55,23 +55,13 @@ const getNavigation = (
   menuSettings: OrganizationMenuSettings
 ): NavigationItem[] => {
   const role = user?.role?.toLowerCase?.() || "";
-  const isMainAdmin = role === "admin";
+  const isMainAdmin = isMainPlatformAdmin(user?.role);
   const adminSubmenu: NavigationSubItem[] = [
     {
       name: "Organizations",
       href: "/admin/organizations",
-      show: () => (user?.role?.toLowerCase?.() || "") === "admin",
+      show: () => isMainPlatformAdmin(user?.role),
     },
-    {
-      name: "Service Requests",
-      href: "/admin/service-requests",
-      show: () => hasPermission("read", "service-tickets"),
-    },
-    // {
-    //   name: "Employee Leave Requests",
-    //   href: "/admin-leave/requests",
-    //   show: () => hasPermission("approve", "leave"),
-    // },
     {
       name: "Common Leave Policy",
       href: "/admin-leave/balance",
@@ -133,28 +123,12 @@ const getNavigation = (
     show: () => menuSettings.selfServiceEnabled,
   },
   {
-    name: "Job Openings",
-    href: "/job-openings",
-    icon: UserPlus,
-    show: () => menuSettings.recruitmentEnabled && !hasPermission("read", "employees"),
-  },
-  {
-    name: "Recruitment",
-    href: "/recruitment",
-    icon: UserPlus,
-    show: () => menuSettings.recruitmentEnabled && hasPermission("read", "employees"),
-    submenu: [
-      { name: "Job Postings", href: "/recruitment", show: () => true },
-      { name: "Referral Requests", href: "/recruitment/referrals", show: () => role === "hr" },
-    ],
-  },
-  {
     name: "Attendance",
     href: "/payroll/attendance",
     icon: ClipboardCheck,
     show: () =>
       menuSettings.attendanceEnabled &&
-      ["hr", "admin", "org_admin"].includes(user?.role?.toLowerCase?.() || ""),
+      ["hr", MAIN_PLATFORM_ADMIN_ROLE, "org_admin"].includes(user?.role?.toLowerCase?.() || ""),
   },
   {
     name: "Time Sheet",
@@ -210,7 +184,7 @@ const getNavigation = (
     icon: Calendar,
     show: () =>
       menuSettings.holidayManagementEnabled &&
-      ["hr", "admin"].includes(user?.role?.toLowerCase?.() || ""),
+      ["hr", MAIN_PLATFORM_ADMIN_ROLE].includes(user?.role?.toLowerCase?.() || ""),
   },
   {
     name: "Payroll",

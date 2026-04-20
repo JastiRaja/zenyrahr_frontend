@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
+import { isMainPlatformAdmin } from "../types/auth";
 
 export type ModuleFlag =
   | "employeeManagementEnabled"
   | "selfServiceEnabled"
   | "attendanceEnabled"
   | "timesheetEnabled"
-  | "recruitmentEnabled"
   | "leaveManagementEnabled"
   | "holidayManagementEnabled"
   | "payrollEnabled"
@@ -21,7 +21,6 @@ export const defaultOrganizationMenuSettings: OrganizationMenuSettings = {
   selfServiceEnabled: true,
   attendanceEnabled: true,
   timesheetEnabled: true,
-  recruitmentEnabled: true,
   leaveManagementEnabled: true,
   holidayManagementEnabled: true,
   payrollEnabled: true,
@@ -42,7 +41,6 @@ const toMenuSettings = (data: any): OrganizationMenuSettings => ({
   selfServiceEnabled: data?.selfServiceEnabled !== false,
   attendanceEnabled: data?.attendanceEnabled !== false,
   timesheetEnabled: data?.timesheetEnabled !== false,
-  recruitmentEnabled: data?.recruitmentEnabled !== false,
   leaveManagementEnabled: data?.leaveManagementEnabled !== false,
   holidayManagementEnabled: data?.holidayManagementEnabled !== false,
   payrollEnabled: data?.payrollEnabled !== false,
@@ -78,7 +76,7 @@ export default function useOrganizationMenuSettings() {
       return;
     }
 
-    if (!user || role === "admin") {
+    if (!user || isMainPlatformAdmin(user?.role)) {
       setMenuSettings(defaultOrganizationMenuSettings);
       setLoading(false);
       return;

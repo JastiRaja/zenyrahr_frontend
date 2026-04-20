@@ -32,6 +32,7 @@ import {
 import api from "../api/axios";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
+import { isMainPlatformAdmin } from "../types/auth";
 import LoadingButton from "../components/LoadingButton";
 import useOrganizationMenuSettings from "../hooks/useOrganizationMenuSettings";
 import dayjs from "dayjs";
@@ -39,6 +40,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import { getPublicHolidays, type Holiday } from "../api/holidays";
 import {
   getAllEmployees,
+  getAttendance,
   getTodayAttendance,
   punchInEmployee,
   punchOutEmployee,
@@ -225,12 +227,10 @@ interface DashboardStats {
   totalEmployees: number;
   averageAttendance: number;
   leaveRequests: number;
-  openPositions: number;
   activeProjects: number;
   employeeGrowth: number;
   attendanceTrend: number;
   leaveRequestTrend: number;
-  positionTrend: number;
 }
 
 type AttendanceStats = {
@@ -305,11 +305,6 @@ type TeamLeaveItem = {
   endDate: string;
 };
 
-type HiringPipelineItem = {
-  status: string;
-  count: number;
-};
-
 type AttritionInsight = {
   inactiveCount: number;
   inactiveRatio: number;
@@ -330,13 +325,15 @@ type DashboardNotificationItem = {
   latestAt: number;
   itemType?: "travel" | "expense";
   itemId?: number;
+  /** Extra context shown under the title (e.g. attendance reminders). */
+  description?: string;
 };
 
 export default function Dashboard() {
   const { user, hasPermission } = useAuth();
   const { menuSettings, loading: menuSettingsLoading } = useOrganizationMenuSettings();
   const navigate = useNavigate();
-  const isMainAdmin = (user?.role || "").toLowerCase() === "admin";
+  const isMainAdmin = isMainPlatformAdmin(user?.role);
   const currentUserRole = (user?.role || "").toLowerCase();
   const isEmployee = currentUserRole === "employee";
   const isManager = currentUserRole === "manager";
@@ -359,12 +356,10 @@ export default function Dashboard() {
     totalEmployees: 0,
     averageAttendance: 0,
     leaveRequests: 0,
-    openPositions: 0,
     activeProjects: 0,
     employeeGrowth: 0,
     attendanceTrend: 0,
     leaveRequestTrend: 0,
-    positionTrend: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -413,7 +408,6 @@ export default function Dashboard() {
   });
   const [upcomingHolidays, setUpcomingHolidays] = useState<Holiday[]>([]);
   const [teamLeaveCalendar, setTeamLeaveCalendar] = useState<TeamLeaveItem[]>([]);
-  const [hiringPipeline, setHiringPipeline] = useState<HiringPipelineItem[]>([]);
   const [attritionInsight, setAttritionInsight] = useState<AttritionInsight>({
     inactiveCount: 0,
     inactiveRatio: 0,
@@ -612,7 +606,6 @@ export default function Dashboard() {
     isMainAdmin,
     menuSettings.attendanceEnabled,
     menuSettings.timesheetEnabled,
-    menuSettings.recruitmentEnabled,
     menuSettings.leaveManagementEnabled,
     menuSettings.travelEnabled,
     menuSettings.expenseEnabled,
@@ -678,11 +671,9 @@ export default function Dashboard() {
     try {
       setLoading(true);
 
-      // Fetch all required data in parallel, including recruitment details
-      const [employeesResponse, leaveRequestsResponse, recruitmentResponse, projectsResponse] = await Promise.all([
+      const [employeesResponse, leaveRequestsResponse, projectsResponse] = await Promise.all([
         api.get(`/auth/employees`),
         api.get(`/api/leave-requests`),
-        api.get(`/api/recruitment-details`),
         menuSettings.timesheetEnabled ? api.get(`/api/projects`) : Promise.resolve({ data: [] }),
       ]);
 
@@ -718,14 +709,10 @@ export default function Dashboard() {
             ).toFixed(2)
           : 0;
 
-      // Fetch open positions from recruitment data
-      const recruitmentData = recruitmentResponse.data || [];
-      const openPositions = recruitmentData.filter((job: any) => job.status === "OPEN").length;
       const projectRows = Array.isArray(projectsResponse.data) ? projectsResponse.data : [];
       const activeProjects = projectRows.filter(
         (project: any) => String(project?.status || "").toUpperCase() === "ACTIVE"
       ).length;
-      const positionTrend = 3.1; // You can update this if you want to calculate a trend
 
       // For now, set some default values for attendance
       const averageAttendance = 95;
@@ -736,12 +723,10 @@ export default function Dashboard() {
         totalEmployees,
         averageAttendance,
         leaveRequests: pendingLeaveRequests.length,
-        openPositions,
         activeProjects,
         employeeGrowth: Number(employeeGrowth),
         attendanceTrend,
         leaveRequestTrend: Number(leaveRequestTrend),
-        positionTrend,
       });
 
       setError(null);
@@ -793,16 +778,9 @@ export default function Dashboard() {
       return;
     }
     try {
-      const [
-        employeesResponse,
-        leaveRequestsResponse,
-        jobPostingsResponse,
-      ] = await Promise.all([
+      const [employeesResponse, leaveRequestsResponse] = await Promise.all([
         api.get(`/auth/employees`),
         api.get(`/api/leave-requests`),
-        menuSettings.recruitmentEnabled
-          ? api.get(`/api/recruitment-details`)
-          : Promise.resolve({ data: [] }),
       ]);
       const timesheetsResponse = menuSettings.timesheetEnabled
         ? await getScopedTimesheets()
@@ -853,21 +831,6 @@ export default function Dashboard() {
         });
       }
 
-      // Process job postings (last 30 days)
-      if (menuSettings.recruitmentEnabled && Array.isArray(jobPostingsResponse.data)) {
-        jobPostingsResponse.data.forEach((job: any) => {
-          if (dayjs(job.createdAt).isAfter(dayjs().subtract(30, "day"))) {
-            activities.push({
-              id: job.id,
-              type: "job",
-              title: "New job posted",
-              description: job.title,
-              timestamp: job.createdAt,
-            });
-          }
-        });
-      }
-
       // Sort activities by timestamp (most recent first)
       activities.sort(
         (a, b) => dayjs(b.timestamp).valueOf() - dayjs(a.timestamp).valueOf()
@@ -912,16 +875,8 @@ export default function Dashboard() {
         href: "/employees/add",
       });
     }
-    if (menuSettings.recruitmentEnabled) {
-      items.push({
-        name: "Posted Jobs",
-        icon: Briefcase,
-        color: "bg-purple-500",
-        href: "/recruitment",
-      });
-    }
     return items;
-  }, [menuSettings.employeeManagementEnabled, menuSettings.recruitmentEnabled]);
+  }, [menuSettings.employeeManagementEnabled]);
 
   const employeeDashboardQuickLinks = useMemo((): DashboardQuickLink[] => {
     const items: DashboardQuickLink[] = [];
@@ -1115,7 +1070,6 @@ export default function Dashboard() {
       setAdminApprovalMetrics([]);
       setComplianceAlerts([]);
       setTeamLeaveCalendar([]);
-      setHiringPipeline([]);
       setAttritionInsight({ inactiveCount: 0, inactiveRatio: 0 });
       return;
     }
@@ -1151,10 +1105,6 @@ export default function Dashboard() {
     if (menuSettings.leaveManagementEnabled && (hasTeamAccess || isManager || canApproveLeave)) {
       addRequest("leaveCalendar", api.get("/api/leave-requests"));
     }
-    if (menuSettings.recruitmentEnabled && hasTeamAccess) {
-      addRequest("recruitment", api.get("/api/recruitment-details"));
-    }
-
     try {
       const settled = await Promise.allSettled(requests);
       const responseByKey: Record<string, any> = {};
@@ -1329,25 +1279,6 @@ export default function Dashboard() {
           endDate: row?.endDate,
         }));
       setTeamLeaveCalendar(upcomingLeaveRows);
-
-      const recruitmentRows = Array.isArray(responseByKey.recruitment?.data)
-        ? responseByKey.recruitment.data
-        : [];
-      const pipelineMap: Record<string, number> = {};
-      recruitmentRows.forEach((row: any) => {
-        const key = String(row?.status || "UNKNOWN").toUpperCase();
-        pipelineMap[key] = (pipelineMap[key] || 0) + 1;
-      });
-      const orderedStages = ["OPEN", "IN_PROGRESS", "CLOSED"];
-      const pipeline = orderedStages
-        .filter((status) => pipelineMap[status] != null)
-        .map((status) => ({ status, count: pipelineMap[status] }))
-        .concat(
-          Object.entries(pipelineMap)
-            .filter(([status]) => !orderedStages.includes(status))
-            .map(([status, count]) => ({ status, count }))
-        );
-      setHiringPipeline(pipeline);
     } catch {
       setAdminApprovalMetrics([]);
       setComplianceAlerts([
@@ -1360,7 +1291,6 @@ export default function Dashboard() {
         },
       ]);
       setTeamLeaveCalendar([]);
-      setHiringPipeline([]);
       setAttritionInsight({ inactiveCount: 0, inactiveRatio: 0 });
     }
   };
@@ -1737,6 +1667,40 @@ export default function Dashboard() {
         }
       }
 
+      if (menuSettings.attendanceEnabled && user?.id) {
+        try {
+          const yesterday = dayjs().subtract(1, "day");
+          const yMonth = String(yesterday.month() + 1);
+          const yYear = yesterday.year();
+          const yDateStr = yesterday.format("YYYY-MM-DD");
+          const attendanceRows = await getAttendance(Number(user.id), yMonth, yYear);
+          const missedYesterday = Array.isArray(attendanceRows)
+            ? attendanceRows.find((row: TodayAttendanceRecord) => {
+                const rowDate = String(row?.date || "").slice(0, 10);
+                return (
+                  rowDate === yDateStr &&
+                  Boolean(row?.checkInTime) &&
+                  !row?.checkOutTime
+                );
+              })
+            : null;
+          if (missedYesterday) {
+            const canOpenAttendanceAdmin = ["hr", "org_admin", "zenyrahr_admin"].includes(currentUserRole);
+            items.unshift({
+              key: `attendance-missed-punchout-${yDateStr}`,
+              label: "Incomplete punch-out from yesterday",
+              description:
+                `You have a punch-in on ${yesterday.format("ddd, D MMM YYYY")} with no punch-out recorded. Contact HR, your org admin, or whoever manages attendance in your organization so they can update your attendance for that day.`,
+              count: 1,
+              href: canOpenAttendanceAdmin ? "/payroll/attendance" : "/dashboard",
+              latestAt: yesterday.endOf("day").valueOf(),
+            });
+          }
+        } catch {
+          // Ignore attendance lookup failures; other notifications still apply.
+        }
+      }
+
       setNotifications(items);
     } catch {
       setNotifications([]);
@@ -1996,14 +1960,6 @@ export default function Dashboard() {
         percent: stats.activeProjects > 0 ? 100 : 0,
       });
     }
-    if (menuSettings.recruitmentEnabled && shouldShowPeopleInsights) {
-      cards.push({
-        title: "Open Positions",
-        value: stats.openPositions,
-        subtitle: "Hiring Status",
-        percent: stats.openPositions > 0 ? 100 : 0,
-      });
-    }
     if (menuSettings.leaveManagementEnabled && shouldShowPeopleInsights) {
       cards.push({
         title: "Leave Requests",
@@ -2016,7 +1972,6 @@ export default function Dashboard() {
   }, [
     menuSettings.attendanceEnabled,
     menuSettings.timesheetEnabled,
-    menuSettings.recruitmentEnabled,
     menuSettings.leaveManagementEnabled,
     canManageEmployees,
     isHrOrOrgAdmin,
@@ -2027,7 +1982,6 @@ export default function Dashboard() {
     absentPercent,
     presentCount,
     presentPercent,
-    stats.openPositions,
     stats.activeProjects,
     stats.leaveRequests,
   ]);
@@ -2047,7 +2001,7 @@ export default function Dashboard() {
   const visibleActivities = recentActivities
     .filter((a) => {
       if (a.type === "timesheet" && !menuSettings.timesheetEnabled) return false;
-      if (a.type === "job" && !menuSettings.recruitmentEnabled) return false;
+      if (a.type === "job") return false;
       if (a.type === "leave" && !menuSettings.leaveManagementEnabled) return false;
       return true;
     })
@@ -2072,20 +2026,15 @@ export default function Dashboard() {
     const timesheetUpdates = menuSettings.timesheetEnabled
       ? inLast30Days.filter((item) => item.type === "timesheet").length
       : 0;
-    const hiringUpdates = menuSettings.recruitmentEnabled
-      ? inLast30Days.filter((item) => item.type === "job").length
-      : 0;
     return {
       onboarded,
       leaveUpdates,
       timesheetUpdates,
-      hiringUpdates,
     };
   }, [
     recentActivities,
     menuSettings.leaveManagementEnabled,
     menuSettings.timesheetEnabled,
-    menuSettings.recruitmentEnabled,
   ]);
   const totalPendingApprovals = adminApprovalMetrics.reduce(
     (sum, metric) => sum + Number(metric.count || 0),
@@ -2272,7 +2221,12 @@ export default function Dashboard() {
                                   >
                                     <div className="min-w-0">
                                       <p className="truncate text-sm font-semibold text-slate-800">{item.label}</p>
-                                      <p className="text-[11px] text-slate-500">{isUnread ? "Unread" : "Read"}</p>
+                                      {item.description ? (
+                                        <p className="mt-1 text-[11px] leading-snug text-slate-600">{item.description}</p>
+                                      ) : null}
+                                      <p className={`text-[11px] text-slate-500 ${item.description ? "mt-1" : ""}`}>
+                                        {isUnread ? "Unread" : "Read"}
+                                      </p>
                                     </div>
                                     <span className={`ml-2 rounded-full px-2 py-1 text-xs font-semibold ${
                                       isUnread ? "bg-sky-100 text-sky-700" : "bg-slate-200 text-slate-600"
@@ -2582,21 +2536,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {hasPermission("manage", "employees") && (
-          <div className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-4 shadow-sm lg:col-span-4">
-            <h2 className="mb-2 text-sm font-semibold text-violet-900">Hiring Pipeline</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {hiringPipeline.map((stage) => (
-                <div key={stage.status} className="rounded-xl border border-violet-200 bg-white/90 px-2 py-2 text-xs">
-                  <p className="text-slate-500">{stage.status.replace("_", " ")}</p>
-                  <p className="text-lg font-bold text-slate-900">{stage.count}</p>
-                </div>
-              ))}
-              {hiringPipeline.length === 0 && <p className="text-sm text-slate-500">No hiring data.</p>}
-            </div>
-          </div>
-        )}
-
         {shouldShowPeopleInsights && (
           <div className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-sky-50 p-4 shadow-sm lg:col-span-4">
             <h2 className="mb-2 text-sm font-semibold text-indigo-900">Employee Lifecycle</h2>
@@ -2607,9 +2546,6 @@ export default function Dashboard() {
               )}
               {menuSettings.timesheetEnabled && (
                 <div className="rounded-lg bg-cyan-50 px-2 py-2">Timesheet: <span className="font-semibold">{lifecycleSnapshot.timesheetUpdates}</span></div>
-              )}
-              {menuSettings.recruitmentEnabled && (
-                <div className="rounded-lg bg-blue-50 px-2 py-2">Hiring: <span className="font-semibold">{lifecycleSnapshot.hiringUpdates}</span></div>
               )}
             </div>
           </div>

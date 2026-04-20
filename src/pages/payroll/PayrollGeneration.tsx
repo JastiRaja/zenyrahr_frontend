@@ -12,14 +12,14 @@ import {
   Popconfirm,
   Tag,
 } from 'antd';
-import { EditOutlined, DeleteOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { DeleteOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import api from '../../api/axios';
 import dayjs from 'dayjs';
-
-const { Option } = Select;
+import { useOrganizationScope } from '../../hooks/useOrganizationScope';
 
 interface PayrollGeneration {
   id: number;
+  organizationId?: number | null;
   monthYear: string;
   generatedBy: string;
   approvedBy: string | null;
@@ -30,6 +30,12 @@ interface PayrollGeneration {
 }
 
 const PayrollGeneration: React.FC = () => {
+  const {
+    organizationId,
+    setSelectedOrganizationId,
+    organizations,
+    needsOrganizationSelection,
+  } = useOrganizationScope();
   const [payrolls, setPayrolls] = useState<PayrollGeneration[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -39,13 +45,22 @@ const PayrollGeneration: React.FC = () => {
   const [selectedPayrollId, setSelectedPayrollId] = useState<number | null>(null);
 
   useEffect(() => {
+    if (organizationId == null) {
+      setPayrolls([]);
+      return;
+    }
     fetchPayrolls();
-  }, []);
+  }, [organizationId]);
 
   const fetchPayrolls = async () => {
+    if (organizationId == null) {
+      return;
+    }
     try {
       setLoading(true);
-      const response = await api.get('/api/payroll');
+      const response = await api.get('/api/payroll', {
+        params: { organizationId },
+      });
       setPayrolls(response.data);
     } catch (error) {
       message.error('Failed to fetch payrolls');
@@ -76,9 +91,11 @@ const PayrollGeneration: React.FC = () => {
     if (!selectedPayrollId) return;
 
     try {
-      await api.post(`/api/payroll/${selectedPayrollId}/reject`, {
-        approvedBy: localStorage.getItem('username'),
-        rejectionReason: values.rejectionReason,
+      await api.post(`/api/payroll/${selectedPayrollId}/reject`, null, {
+        params: {
+          approvedBy: localStorage.getItem('username') ?? '',
+          rejectionReason: values.rejectionReason,
+        },
       });
       message.success('Payroll rejected successfully');
       setRejectModalVisible(false);
@@ -99,11 +116,18 @@ const PayrollGeneration: React.FC = () => {
   };
 
   const handleSubmit = async (values: any) => {
+    if (organizationId == null) {
+      message.error('Select an organization first');
+      return;
+    }
     try {
       const monthYear = values.monthYear.format('YYYY-MM');
-      await api.post('/api/payroll/generate', {
-        monthYear,
-        generatedBy: localStorage.getItem('username'),
+      await api.post('/api/payroll/generate', null, {
+        params: {
+          monthYear,
+          generatedBy: localStorage.getItem('username') ?? '',
+          organizationId,
+        },
       });
       message.success('Payroll generated successfully');
       setModalVisible(false);
@@ -205,10 +229,23 @@ const PayrollGeneration: React.FC = () => {
         <Button
           type="primary"
           onClick={handleGenerate}
+          disabled={organizationId == null}
         >
           Generate Payroll
         </Button>
       </div>
+      {needsOrganizationSelection && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-slate-600">Organization</span>
+          <Select
+            style={{ minWidth: 220 }}
+            placeholder="Select organization"
+            value={organizationId ?? undefined}
+            onChange={(v) => setSelectedOrganizationId(v)}
+            options={organizations.map((o) => ({ label: o.name, value: o.id }))}
+          />
+        </div>
+      )}
 
       <Table
         columns={columns}

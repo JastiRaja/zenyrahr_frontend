@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { isMainPlatformAdmin, MAIN_PLATFORM_ADMIN_ROLE } from "../../types/auth";
 import api from "../../api/axios";
 import CommonDialog from "../../components/CommonDialog";
 import LoadingButton from "../../components/LoadingButton";
@@ -36,7 +37,7 @@ export default function AddEmployee() {
   const location = useLocation();
   const { hasPermission, user } = useAuth();
   const canManageEmployees = hasPermission("manage", "employees");
-  const isMainAdmin = user?.role?.toLowerCase() === "admin";
+  const isMainAdmin = isMainPlatformAdmin(user?.role);
   const isOrgAdmin = user?.role?.toLowerCase() === "org_admin";
   const isHr = user?.role?.toLowerCase() === "hr";
   const searchParams = new URLSearchParams(location.search);
@@ -202,7 +203,7 @@ export default function AddEmployee() {
   const assignableRoleOptions = roleOptions.filter((role) => {
     const normalized = role.toLowerCase();
     if (isHr || isOrgAdmin) {
-      return normalized !== "admin" && normalized !== "org_admin";
+      return normalized !== MAIN_PLATFORM_ADMIN_ROLE && normalized !== "org_admin";
     }
     return true;
   });

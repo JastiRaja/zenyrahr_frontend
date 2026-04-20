@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarChart, LineChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, TrendingUp, UserPlus, UserMinus, IndianRupee, Clock } from 'lucide-react';
+import { Users, UserMinus, Clock, CalendarDays } from 'lucide-react';
 
 const monthlyData = [
   { month: 'Jan', employees: 220, hires: 12, turnover: 5 },
@@ -31,9 +31,9 @@ export default function Analytics() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { name: 'Total Employees', value: '248', change: '+4.75%', icon: Users },
-          { name: 'Monthly Hires', value: '18', change: '+12.5%', icon: UserPlus },
+          { name: 'Attendance rate', value: '96%', change: '+1.2%', icon: Clock },
           { name: 'Turnover Rate', value: '3.2%', change: '-1.5%', icon: UserMinus },
-          { name: 'Avg. Time to Hire', value: '21 days', change: '-2 days', icon: Clock },
+          { name: 'Leave days (YTD)', value: '1,240', change: '+3%', icon: CalendarDays },
         ].map((item) => (
           <div key={item.name} className="stat-card p-6">
             <div className="flex items-center">
@@ -90,12 +90,12 @@ export default function Analytics() {
       {/* Detailed Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="card p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Recruitment Metrics</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Operations snapshot</h2>
           <div className="space-y-4">
             {[
-              { label: 'Applications per Opening', value: '45', trend: '+12%' },
-              { label: 'Interview to Offer Ratio', value: '3:1', trend: 'Stable' },
-              { label: 'Offer Acceptance Rate', value: '85%', trend: '+5%' },
+              { label: 'Payroll cycles completed', value: '12', trend: 'On track' },
+              { label: 'Pending leave approvals', value: '7', trend: '-2 vs last week' },
+              { label: 'Timesheets awaiting review', value: '14', trend: '+4%' },
             ].map((metric) => (
               <div key={metric.label} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200/70">
                 <div>

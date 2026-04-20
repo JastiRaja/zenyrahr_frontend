@@ -150,8 +150,23 @@ const AdminPayslipManagement: React.FC = () => {
       await axiosInstance.post(`/api/payroll/generate-batch?month=${generateMonth}`);
       setSuccess('Payroll generated for all employees!');
       fetchPayslips();
-    } catch {
-      setError('Failed to generate payroll');
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data;
+        if (typeof data === 'string' && data.trim()) {
+          setError(data);
+        } else if (data && typeof data === 'object' && typeof data.message === 'string' && data.message.trim()) {
+          setError(data.message);
+        } else if (err.response?.status === 400) {
+          setError('Payscale is not added for one or more employees. Please add payscale and try again.');
+        } else if (err.response?.status === 403) {
+          setError('You do not have permission to generate payroll.');
+        } else {
+          setError('Failed to generate payroll');
+        }
+      } else {
+        setError('Failed to generate payroll');
+      }
     } finally {
       setGenerating(false);
     }

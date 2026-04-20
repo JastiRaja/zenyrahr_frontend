@@ -9,6 +9,16 @@ import { Modal } from 'antd';
 import { FileText } from 'lucide-react';
 import api from '../../api/axios';
 
+function payslipStatusUpper(status: string | undefined | null) {
+  return (status || '').trim().toUpperCase();
+}
+
+/** Approved or paid payslips may be downloaded by the employee. */
+function isPayslipDownloadable(status: string | undefined | null) {
+  const u = payslipStatusUpper(status);
+  return u === 'APPROVED' || u === 'PAID';
+}
+
 function formatDateSafe(dateString: string | undefined | null, fmt: string) {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -106,9 +116,11 @@ const Payslips: React.FC = () => {
       '8-3-224/11/D/5/1(G-127), Second Floor, Madhuranagar, Hyderabad, Telangana – 500038, India.',
     companyLogoUrl: employeeProfile?.organization?.logoUrl || bankDetails?.companyLogoUrl || '',
   });
-  const approvedPayslips = payslips.filter((p) => p.status === 'APPROVED').length;
-  const paidPayslips = payslips.filter((p) => p.status === 'PAID').length;
-  const pendingPayslips = payslips.filter((p) => p.status !== 'PAID' && p.status !== 'APPROVED').length;
+  const approvedPayslips = payslips.filter((p) => payslipStatusUpper(p.status) === 'APPROVED').length;
+  const paidPayslips = payslips.filter((p) => payslipStatusUpper(p.status) === 'PAID').length;
+  const pendingPayslips = payslips.filter(
+    (p) => !isPayslipDownloadable(p.status)
+  ).length;
   const totalNet = payslips.reduce((sum, p) => sum + Number('netPay' in p ? p.netPay || 0 : 0), 0);
 
   return (
@@ -117,7 +129,7 @@ const Payslips: React.FC = () => {
         <div className="bg-gradient-to-r from-sky-700 to-blue-800 px-6 py-5 text-white">
           <h1 className="text-3xl font-bold tracking-tight">My Payslips</h1>
           <p className="mt-1 text-sm text-sky-50">
-            View your payroll history and download approved payslips.
+            View your payroll history and download approved or paid payslips.
           </p>
         </div>
         <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 bg-white lg:grid-cols-4 lg:divide-y-0">
@@ -188,8 +200,8 @@ const Payslips: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                    ${payslip.status === 'PAID' ? 'bg-green-100 text-green-800' : 
-                      payslip.status === 'APPROVED' ? 'bg-blue-100 text-blue-800' : 
+                    ${payslipStatusUpper(payslip.status) === 'PAID' ? 'bg-green-100 text-green-800' : 
+                      payslipStatusUpper(payslip.status) === 'APPROVED' ? 'bg-blue-100 text-blue-800' : 
                       'bg-yellow-100 text-yellow-800'}`}>
                     {payslip.status}
                   </span>
@@ -197,8 +209,8 @@ const Payslips: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button
                     onClick={() => handleOpenModal(payslip)}
-                    className={`text-indigo-600 hover:text-indigo-900 ${payslip.status !== 'APPROVED' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={payslip.status !== 'APPROVED'}
+                    className={`text-indigo-600 hover:text-indigo-900 ${!isPayslipDownloadable(payslip.status) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!isPayslipDownloadable(payslip.status)}
                   >
                     Download PDF
                   </button>
@@ -221,7 +233,7 @@ const Payslips: React.FC = () => {
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         footer={[
-          <button key="download" onClick={handleDownloadPDF} className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60" disabled={selectedPayslip?.status !== 'APPROVED'}>
+          <button key="download" onClick={handleDownloadPDF} className="rounded-md bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60" disabled={!isPayslipDownloadable(selectedPayslip?.status)}>
             Download PDF
           </button>,
           <button key="close" onClick={() => setModalOpen(false)} className="ml-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Close</button>

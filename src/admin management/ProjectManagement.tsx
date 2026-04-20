@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import CommonDialog from "../components/CommonDialog";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
+import { isMainPlatformAdmin } from "../types/auth";
 
 interface Project {
   id: number;
@@ -43,8 +44,7 @@ const MAX_PROJECT_DESCRIPTION_LENGTH = 10000;
 
 const ProjectManagement: React.FC = () => {
   const { user } = useAuth();
-  const currentUserRole = String(user?.role || "").toLowerCase();
-  const isReadOnlyAdmin = currentUserRole === "admin";
+  const isReadOnlyAdmin = isMainPlatformAdmin(user?.role);
   const canEditProjects = !isReadOnlyAdmin;
   const [projects, setProjects] = useState<Project[]>([]);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);

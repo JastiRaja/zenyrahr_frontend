@@ -91,7 +91,7 @@ export default function ApprovalHierarchy() {
     const fromCatalog = roles
       .map((role) => String(role.name || "").trim().toLowerCase())
       .filter(Boolean);
-    return Array.from(new Set([...fromCatalog, "org_admin", "admin"]));
+    return Array.from(new Set([...fromCatalog, "org_admin"]));
   }, [roles]);
   const leaveRequesterRoleOptions = useMemo(() => {
     const fromCatalog = roles
@@ -120,11 +120,7 @@ export default function ApprovalHierarchy() {
       levelNo += 1;
     }
     if (leaveRequesterRoleOptions.includes("manager")) {
-      const managerApprover = roleOptions.includes("hr")
-        ? "hr"
-        : roleOptions.includes("org_admin")
-          ? "org_admin"
-          : "admin";
+      const managerApprover = roleOptions.includes("hr") ? "hr" : "org_admin";
       next.push({
         levelNo,
         requesterRole: "manager",
@@ -140,7 +136,7 @@ export default function ApprovalHierarchy() {
         levelNo,
         requesterRole: "hr",
         approverType: "ROLE",
-        approverRole: roleOptions.includes("org_admin") ? "org_admin" : "admin",
+        approverRole: "org_admin",
         approverUserId: null,
         approverUserName: null,
       });
@@ -151,7 +147,7 @@ export default function ApprovalHierarchy() {
         levelNo,
         requesterRole: "org_admin",
         approverType: "ROLE",
-        approverRole: "admin",
+        approverRole: "org_admin",
         approverUserId: null,
         approverUserName: null,
       });
@@ -162,7 +158,7 @@ export default function ApprovalHierarchy() {
         levelNo: 1,
         requesterRole: "org_admin",
         approverType: "ROLE",
-        approverRole: "admin",
+        approverRole: "org_admin",
         approverUserId: null,
         approverUserName: null,
       });

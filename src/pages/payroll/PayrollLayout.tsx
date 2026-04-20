@@ -2,13 +2,15 @@ import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { MAIN_PLATFORM_ADMIN_ROLE } from '../../types/auth';
 
 const PayrollLayout: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
   const role = user?.role?.toLowerCase() || '';
   const isHR = role === 'hr';
-  const canOpenAttendanceManagement = role === 'hr' || role === 'org_admin';
+  const canOpenAttendanceManagement =
+    role === 'hr' || role === 'org_admin' || role === MAIN_PLATFORM_ADMIN_ROLE;
   const hidePayrollHeader = location.pathname === "/payroll/attendance";
 
   return (

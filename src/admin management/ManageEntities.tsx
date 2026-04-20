@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaPlus, FaTrash } from "react-icons/fa"; // Import the icons
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
+import { isMainPlatformAdmin } from "../types/auth";
 import { useNavigate } from "react-router-dom";
 
 type EmployeeCodeSettings = {
@@ -15,7 +16,7 @@ export default function ManageEntities() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const currentRole = user?.role?.toLowerCase() || "";
-  const isMainAdmin = currentRole === "admin";
+  const isMainAdmin = isMainPlatformAdmin(currentRole);
   const isOrgAdmin = currentRole === "org_admin";
   const canManageRoleCatalog = isMainAdmin || isOrgAdmin;
   const [designations, setDesignations] = useState<

@@ -8,6 +8,7 @@ interface PersonalInfoFormProps {
     email: string;
     phone: string;
     address: string;
+    allowEmergencyContactVisibilityToHr: boolean;
   };
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
@@ -120,6 +121,21 @@ export default function PersonalInfoForm({
               required
             />
           </div>
+        </div>
+
+        <div className="sm:col-span-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              name="allowEmergencyContactVisibilityToHr"
+              checked={Boolean(formData.allowEmergencyContactVisibilityToHr)}
+              onChange={onChange}
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            />
+            <span className="text-sm text-slate-700">
+              Allow HR/Org Admin to view my emergency and family contact details for urgent situations.
+            </span>
+          </label>
         </div>
       </div>
     </div>

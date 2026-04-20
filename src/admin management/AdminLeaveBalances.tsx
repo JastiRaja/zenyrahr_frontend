@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../contexts/AuthContext";
+import { isMainPlatformAdmin } from "../types/auth";
 
 type LeaveType = {
   id: number;
@@ -28,7 +29,7 @@ type OrganizationOption = {
 
 export default function AdminLeaveBalances() {
   const { user, hasPermission } = useAuth();
-  const isMainAdmin = (user?.role || "").toLowerCase() === "admin";
+  const isMainAdmin = isMainPlatformAdmin(user?.role);
   const canManageLeaveTypes =
     isMainAdmin || hasPermission("manage", "leave-balance") || hasPermission("manage", "leave-types");
   const [loading, setLoading] = useState(true);

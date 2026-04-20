@@ -443,6 +443,7 @@ interface PersonalInfo {
   email: string;
   phone: string;
   address: string;
+  allowEmergencyContactVisibilityToHr: boolean;
 }
 
 interface Education {
@@ -503,6 +504,7 @@ const initialFormState: FormState = {
     email: '',
     phone: '',
     address: '',
+    allowEmergencyContactVisibilityToHr: false,
   },
   photo: null,
   education: [{ id: 1, degree: '', institution: '', year: '', field: '' }],
@@ -552,6 +554,7 @@ const UpdateEmployee: React.FC = () => {
               email: data.email || '',
               phone: data.phone || '',
               address: data.address || '',
+              allowEmergencyContactVisibilityToHr: Boolean(data.allowEmergencyContactVisibilityToHr),
             },
           });
           setProfilePhotoUrl(toAbsoluteMediaUrl(data?.documents?.profileImageUrl));
@@ -626,10 +629,10 @@ const UpdateEmployee: React.FC = () => {
             <PersonalInfoForm
               formData={formData.personal}
               onChange={e => {
-                const { name, value } = e.target;
+                const { name, value, type, checked } = e.target;
                 updateFormData('personal', {
                   ...formData.personal,
-                  [name]: value,
+                  [name]: type === 'checkbox' ? checked : value,
                 });
               }}
             />

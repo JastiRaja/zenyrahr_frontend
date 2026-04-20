@@ -6,6 +6,36 @@ interface PayslipTemplateProps {
   employee: any;
 }
 
+function parseMoney(value: unknown): number {
+  const n = parseFloat(String(value ?? '').replace(/,/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Formatted amount for display; legacy payslips may omit DA/health fields. */
+function displayDearnessAllowance(p: any): string {
+  const explicit = parseMoney(p?.dearnessAllowance);
+  if (explicit > 0.001) return String(p.dearnessAllowance);
+  const total = parseMoney(p?.totalEarnings);
+  const sum =
+    parseMoney(p?.basicPay) +
+    parseMoney(p?.houseRentAllowance) +
+    parseMoney(p?.medicalAllowance) +
+    parseMoney(p?.otherAllowances) +
+    parseMoney(p?.conveyanceAllowance);
+  const residual = Math.round((total - sum) * 100) / 100;
+  return residual > 0.001 ? residual.toFixed(2) : '0.00';
+}
+
+function displayHealthInsurance(p: any): string {
+  const explicit = parseMoney(p?.healthInsuranceDeduction);
+  if (explicit > 0.001) return String(p.healthInsuranceDeduction);
+  const td = parseMoney(p?.totalDeductions);
+  const epf = parseMoney(p?.epfAmount);
+  const pt = parseMoney(p?.professionalTax);
+  const residual = Math.round((td - epf - pt) * 100) / 100;
+  return residual > 0.001 ? residual.toFixed(2) : String(p?.healthInsuranceDeduction ?? '0.00');
+}
+
 const PayslipTemplate = forwardRef<HTMLDivElement, PayslipTemplateProps>(({ payslip, employee }, ref) => {
   const companyLogoSrc = employee?.companyLogoUrl || logo;
   const companyName = employee?.companyName || 'ZenyraHR';
@@ -69,15 +99,47 @@ const PayslipTemplate = forwardRef<HTMLDivElement, PayslipTemplateProps>(({ pays
         </tr>
       </tbody>
     </table>
-    {/* Earnings & Deductions */}
-    <table style={{ width: '100%', borderCollapse: 'collapse', margin: '16px 0' }}>
-      <thead>
-        <tr>
-          <th colSpan={2} style={{ textAlign: 'center', borderBottom: '1px solid #000' }}>Earnings</th>
-          <th colSpan={2} style={{ textAlign: 'center', borderBottom: '1px solid #000' }}>Deductions</th>
-        </tr>
-      </thead>
+    {/* Earnings & Deductions — header text and rule are split so html2canvas does not draw a “stitched” line between columns */}
+    <table
+      style={{
+        width: '100%',
+        borderCollapse: 'separate',
+        borderSpacing: 0,
+        margin: '16px 0',
+      }}
+    >
       <tbody>
+        <tr>
+          <th
+            colSpan={2}
+            style={{
+              textAlign: 'center',
+              fontWeight: 'bold',
+              padding: '10px 8px 4px',
+              border: 'none',
+              verticalAlign: 'bottom',
+            }}
+          >
+            Earnings
+          </th>
+          <th
+            colSpan={2}
+            style={{
+              textAlign: 'center',
+              fontWeight: 'bold',
+              padding: '10px 8px 4px',
+              border: 'none',
+              verticalAlign: 'bottom',
+            }}
+          >
+            Deductions
+          </th>
+        </tr>
+        <tr>
+          <td colSpan={4} style={{ padding: '0 0 10px', border: 'none', lineHeight: 0 }}>
+            <div style={{ borderTop: '1px solid #000', width: '100%' }} />
+          </td>
+        </tr>
         <tr>
           <td>Basic Wage</td>
           <td>₹{payslip.basicPay}</td>
@@ -89,6 +151,12 @@ const PayslipTemplate = forwardRef<HTMLDivElement, PayslipTemplateProps>(({ pays
           <td>₹{payslip.houseRentAllowance}</td>
           <td>Professional Tax</td>
           <td>₹{payslip.professionalTax}</td>
+        </tr>
+        <tr>
+          <td>Dearness Allowance (DA)</td>
+          <td>₹{displayDearnessAllowance(payslip)}</td>
+          <td>Health Insurance</td>
+          <td>₹{displayHealthInsurance(payslip)}</td>
         </tr>
         <tr>
           <td>Medical Allowances</td>

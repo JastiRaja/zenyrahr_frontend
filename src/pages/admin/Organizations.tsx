@@ -24,7 +24,6 @@ type Organization = {
   travelEnabled?: boolean;
   expenseEnabled?: boolean;
   timesheetEnabled?: boolean;
-  recruitmentEnabled?: boolean;
 };
 
 type ModuleKey =
@@ -32,7 +31,6 @@ type ModuleKey =
   | "selfServiceEnabled"
   | "attendanceEnabled"
   | "timesheetEnabled"
-  | "recruitmentEnabled"
   | "leaveManagementEnabled"
   | "holidayManagementEnabled"
   | "payrollEnabled"
@@ -44,7 +42,6 @@ const MODULE_OPTIONS: { key: ModuleKey; label: string }[] = [
   { key: "selfServiceEnabled", label: "Self Service" },
   { key: "attendanceEnabled", label: "Attendance" },
   { key: "timesheetEnabled", label: "Time Sheet" },
-  { key: "recruitmentEnabled", label: "Recruitment" },
   { key: "leaveManagementEnabled", label: "Leave Management" },
   { key: "holidayManagementEnabled", label: "Holiday Management" },
   { key: "payrollEnabled", label: "Payroll" },
@@ -67,7 +64,6 @@ type OrganizationForm = {
   travelEnabled: boolean;
   expenseEnabled: boolean;
   timesheetEnabled: boolean;
-  recruitmentEnabled: boolean;
 };
 
 const buildOrgCode = () => `ORG-${Date.now()}`;
@@ -87,7 +83,6 @@ const emptyForm = (): OrganizationForm => ({
   travelEnabled: true,
   expenseEnabled: true,
   timesheetEnabled: true,
-  recruitmentEnabled: true,
 });
 
 export default function Organizations() {
@@ -240,7 +235,6 @@ export default function Organizations() {
         selfServiceEnabled: form.selfServiceEnabled,
         attendanceEnabled: form.attendanceEnabled,
         timesheetEnabled: form.timesheetEnabled,
-        recruitmentEnabled: form.recruitmentEnabled,
         leaveManagementEnabled: form.leaveManagementEnabled,
         holidayManagementEnabled: form.holidayManagementEnabled,
         payrollEnabled: form.payrollEnabled,

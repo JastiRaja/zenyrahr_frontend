@@ -4,6 +4,7 @@ import api from "../../api/axios";
 import dayjs from "dayjs";
 import { Check, X, Search } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { isMainPlatformAdmin } from "../../types/auth";
 import { Tab } from '@headlessui/react';
 import ReactModal from 'react-modal';
 
@@ -189,7 +190,7 @@ export default function ExpenseApprovals() {
   const canApproveExpense = (expense: Expense) => {
     if (!user) return false;
     const role = user.role?.toLowerCase();
-    if (role === "admin") return true;
+    if (isMainPlatformAdmin(user.role)) return true;
     if (role === "manager") {
       return expense.firstLevelApprovalStatus?.toLowerCase() === "pending";
     }
@@ -203,7 +204,7 @@ export default function ExpenseApprovals() {
   const canApproveTravel = (travel: TravelRequest) => {
     if (!user) return false;
     const role = user.role?.toLowerCase();
-    if (role === "admin") return true;
+    if (isMainPlatformAdmin(user.role)) return true;
     if (role === "manager") {
       return travel.firstLevelApprovalStatus?.toLowerCase() === "pending";
     }
